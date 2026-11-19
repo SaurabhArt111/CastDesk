@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paneo talks to your own computer on your own network (ws://192.168.x.x or the USB tunnel on 127.0.0.1).
+     Those hosts have no public TLS certificate, so plain WebSocket is allowed. Pairing uses a PIN-authenticated key exchange. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,163 @@
+{
+  "name": "@paneo/desktop",
+  "productName": "Paneo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Paneo desktop app for Windows, macOS and Linux.",
+  "author": "Paneo contributors",
+  "license": "MIT",
+  "homepage": "https://paneo.app",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "node scripts/ensure-electron.mjs && electron .",
+    "start": "node scripts/ensure-electron.mjs && electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux",
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@paneo/host": "*",
+    "@paneo/shared": "*"
+  },
+  "devDependencies": {
+    "electron": "41.10.7",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "app.paneo.desktop",
+    "productName": "Paneo",
+    "copyright": "Copyright \u00a9 2026 Paneo contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to": "client"
+      }
+    ],
+    "asarUnpack": [
+      "**/node_modules/@nut-tree-fork/**",
+      "**/node_modules/libnut*/**"
+    ],
+    "npmRebuild": false,
+    "artifactName": "Paneo-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "msi",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh",
+      "artifactName": "Paneo-Setup-${version}-${arch}.${ext}",
+      "shortcutName": "Paneo"
+    },
+    "portable": {
+      "artifactName": "Paneo-Portable-${version}.${ext}"
+    },
+    "msi": {
+      "artifactName": "Paneo-${version}-${arch}.${ext}",
+      "oneClick": false
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Paneo finds and connects to your other devices on the local network.",
+        "NSBonjourServices": [
+          "_paneo._tcp"
+        ],
+        "NSAppleEventsUsageDescription": "Paneo uses accessibility features to let your paired devices control this Mac."
+      }
+    },
+    "dmg": {
+      "artifactName": "Paneo-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "synopsis": "Mirror, extend and control screens over USB or local network",
+      "target": [
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "Paneo",
+          "Comment": "Mirror, extend and control screens",
+          "Categories": "Utility;Network;RemoteAccess;"
+        }
+      },
+      "executableName": "paneo"
+    },
+    "deb": {
+      "depends": [
+        "libnotify4",
+        "libxtst6",
+        "libxkbfile1"
+      ],
+      "artifactName": "paneo_${version}_${arch}.${ext}"
+    },
+    "rpm": {
+      "artifactName": "paneo-${version}.${arch}.${ext}"
+    },
+    "appImage": {
+      "artifactName": "Paneo-${version}-${arch}.${ext}"
+    },
+    "electronVersion": "41.10.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paneo/paneo.git"
+  }
+}

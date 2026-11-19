@@ -1,0 +1,33 @@
+{
+  "name": "@paneo/client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Paneo app UI. One React codebase shipped as the desktop renderer (Electron), the Android/iOS app (Capacitor) and a browser PWA served by the host.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "cap:sync": "cap sync",
+    "build:android": "vite build && cap sync android"
+  },
+  "dependencies": {
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor-mlkit/barcode-scanning": "^8.2.2",
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.4",
+    "@paneo/shared": "*",
+    "capacitor-zeroconf": "^4.0.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
+    "@vitejs/plugin-react": "^6.0.0",
+    "vite": "^8.0.0"
+  }
+}

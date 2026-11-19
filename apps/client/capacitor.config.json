@@ -1,0 +1,15 @@
+{
+  "appId": "app.paneo.mobile",
+  "appName": "Paneo",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "BarcodeScanning": {}
+  }
+}
