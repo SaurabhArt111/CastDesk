@@ -3,8 +3,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { HostService, DisplayManager, AdbForwarder, setAutostart } from '@paneo/host';
-import { DEFAULT_SETTINGS } from '@paneo/shared';
+import { HostService, DisplayManager, AdbForwarder, setAutostart, installPlatformTools } from '@castdesk/host';
+import { DEFAULT_SETTINGS } from '@castdesk/shared';
 import { getPermissions, fixPermission } from './permissions.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +34,7 @@ const saveSettings = () => fs.writeFileSync(settingsFile(), JSON.stringify(setti
 /* ------------------------------- state ------------------------------- */
 let host;
 let adb;
+let captureWin = null;
 let win = null;
 let tray = null;
 let quitting = false;
@@ -41,6 +42,8 @@ let pendingCaptureNativeId = null;
 const usbDevices = new Map();
 let usbList = []; // every phone adb can see, including ones still waiting for "Allow USB debugging"
 let adbAvailable = false;
+let adbInstall = { state: 'idle', pct: 0, error: null };
+let adbError = null;
 
 const webRoot = () => (isDev ? path.resolve(here, '../../client/dist') : path.join(process.resourcesPath, 'client'));
 const iconPath = () => path.join(here, '..', 'build', 'icon.png');
@@ -78,7 +81,7 @@ async function approveControl(device) {
     cancelId: 1,
     title: 'New device paired',
     message: `Allow “${device.name}” to control this computer?`,
-    detail: 'It will be able to move the mouse and type. You can change this any time in Paneo.',
+    detail: 'It will be able to move the mouse and type. You can change this any time in CastDesk.',
   });
   const timeout = new Promise((r) => setTimeout(() => r({ response: 1 }), 60_000));
   return (await Promise.race([ask, timeout])).response === 0;
@@ -104,7 +107,7 @@ async function startHost() {
     needsApproval: () => settings.requireApprovalForControl,
   });
   const push = throttle(pushState, 120);
-  for (const ev of ['pin', 'trusted', 'clients', 'displays', 'ready', 'source']) host.on(ev, push);
+  for (const ev of ['pin', 'trusted', 'clients', 'displays', 'ready', 'source', 'source-status']) host.on(ev, push);
   host.on('peers', (p) => win?.webContents.send('peers', p));
   host.on('log', (lvl, msg) => console.log(`[host:${lvl}] ${msg}`));
   host.on('paired', (d) => new Notification({ title: 'Device paired', body: `${d.name} can now connect to this computer without a PIN.` }).show());
@@ -119,8 +122,9 @@ async function startAdb() {
   adb?.stop();
   adb = null;
   if (!settings.usbAutoForward) return;
-  adb = new AdbForwarder();
+  adb = new AdbForwarder({ toolsDir: path.join(app.getPath('userData'), 'tools') });
   adbAvailable = await adb.available();
+  adbError = adb.lastError;
   adb.on('device', (d) => {
     usbDevices.set(d.serial, d);
     pushState();
@@ -150,8 +154,9 @@ function buildState() {
     displays: host.displays.current(),
     settings,
     inputAvailable: host.input.available,
-    adb: { available: adbAvailable, devices: [...usbDevices.values()], list: usbList.map((d) => ({ ...d, linked: usbDevices.has(d.serial) })) },
+    adb: { available: adbAvailable, error: adbError, install: adbInstall, enabled: settings.usbAutoForward, devices: [...usbDevices.values()], list: usbList.map((d) => ({ ...d, linked: usbDevices.has(d.serial) })) },
     caps: host.displays.capabilities(),
+    capture: { ...host.sourceStatus, video: host.sourceCaps.video },
   };
 }
 function pushState() {
@@ -204,8 +209,8 @@ function createWindow() {
     minWidth: 360,
     minHeight: 560,
     show: false,
-    backgroundColor: '#0b1020',
-    title: 'Paneo',
+    backgroundColor: '#0d2a2d',
+    title: 'CastDesk',
     icon: fs.existsSync(iconPath()) ? iconPath() : undefined,
     autoHideMenuBar: true,
     webPreferences: {
@@ -217,7 +222,7 @@ function createWindow() {
   });
   win.removeMenu?.();
   const index = path.join(webRoot(), 'index.html');
-  if (isDev && process.env.PANEO_DEV_URL) win.loadURL(process.env.PANEO_DEV_URL);
+  if (isDev && process.env.CASTDESK_DEV_URL) win.loadURL(process.env.CASTDESK_DEV_URL);
   else win.loadFile(index);
   win.once('ready-to-show', () => {
     if (!(hiddenLaunch && settings.startMinimized)) win.show();
@@ -233,7 +238,44 @@ function createWindow() {
     return { action: 'deny' };
   });
   win.webContents.on('will-navigate', (e, url) => {
-    if (!url.startsWith('file://') && !url.startsWith(process.env.PANEO_DEV_URL || 'file://')) e.preventDefault();
+    if (!url.startsWith('file://') && !url.startsWith(process.env.CASTDESK_DEV_URL || 'file://')) e.preventDefault();
+  });
+}
+
+/**
+ * Screen capture + video encoding lives in its own hidden window so it never competes with the
+ * UI for a thread, and keeps running at full speed while the main window is hidden in the tray.
+ */
+function createCaptureWindow() {
+  if (captureWin && !captureWin.isDestroyed()) return;
+  captureWin = new BrowserWindow({
+    show: false,
+    width: 320,
+    height: 240,
+    skipTaskbar: true,
+    focusable: false,
+    webPreferences: {
+      preload: path.join(here, 'preload.cjs'),
+      contextIsolation: true,
+      sandbox: !noSandbox,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  });
+  const q = { capture: '1', port: String(host.port), token: host.sourceToken };
+  if (isDev && process.env.CASTDESK_DEV_URL) {
+    const u = new URL(process.env.CASTDESK_DEV_URL);
+    for (const [k, v] of Object.entries(q)) u.searchParams.set(k, v);
+    captureWin.loadURL(u.toString());
+  } else {
+    captureWin.loadFile(path.join(webRoot(), 'index.html'), { query: q });
+  }
+  captureWin.webContents.on('render-process-gone', () => {
+    captureWin = null;
+    setTimeout(() => !quitting && host && createCaptureWindow(), 1000);
+  });
+  captureWin.on('closed', () => {
+    captureWin = null;
   });
 }
 
@@ -246,10 +288,10 @@ function showWindow() {
 function updateTrayMenu() {
   if (!tray || !host) return;
   const clients = host.clients().length;
-  tray.setToolTip(`Paneo — ${clients ? `${clients} connected` : 'ready'}`);
+  tray.setToolTip(`CastDesk — ${clients ? `${clients} connected` : 'ready'}`);
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Open Paneo', click: showWindow },
+      { label: 'Open CastDesk', click: showWindow },
       { type: 'separator' },
       { label: `PIN: ${host.pin.pin.slice(0, 3)} ${host.pin.pin.slice(3)}`, enabled: false },
       { label: 'New PIN', click: () => host.pin.rotate('manual') },
@@ -258,7 +300,7 @@ function updateTrayMenu() {
       { label: 'Allow remote control', type: 'checkbox', checked: settings.allowControl, click: (i) => setSettings({ allowControl: i.checked }) },
       { label: 'Start with computer', type: 'checkbox', checked: settings.autostart, click: (i) => setSettings({ autostart: i.checked }) },
       { type: 'separator' },
-      { label: 'Quit Paneo', click: () => { quitting = true; app.quit(); } },
+      { label: 'Quit CastDesk', click: () => { quitting = true; app.quit(); } },
     ]),
   );
 }
@@ -280,13 +322,36 @@ function registerIpc() {
   ipcMain.handle('pin:rotate', () => host.pin.rotate('manual'));
   ipcMain.handle('scan:refresh', async () => {
     host.discovery.refresh();
+    if (adb) adb.locate();
     adbAvailable = adb ? await adb.available() : false;
+    adbError = adb?.lastError || null;
     if (adb && adbAvailable) {
       if (!adb.timer) adb.start(host.port);
       await adb.scan();
     }
     pushState();
     return true;
+  });
+  ipcMain.handle('usb:installAdb', async () => {
+    if (adbInstall.state === 'downloading') return { ok: false, error: 'Already downloading' };
+    adbInstall = { state: 'downloading', pct: 0, error: null };
+    pushState();
+    try {
+      await installPlatformTools(path.join(app.getPath('userData'), 'tools'), {
+        onProgress: (pct) => {
+          adbInstall = { ...adbInstall, pct };
+          pushState();
+        },
+      });
+      adbInstall = { state: 'idle', pct: 0, error: null };
+      if (!settings.usbAutoForward) await setSettings({ usbAutoForward: true });
+      else await startAdb();
+      return { ok: true };
+    } catch (err) {
+      adbInstall = { state: 'error', pct: 0, error: err.message };
+      pushState();
+      return { ok: false, error: err.message };
+    }
   });
   ipcMain.handle('trusted:revoke', (_e, id) => host.revoke(String(id)));
   ipcMain.handle('trusted:perms', (_e, id, perms) => host.setPermissions(String(id), perms.filter((p) => ['view', 'control'].includes(p))));
@@ -307,7 +372,7 @@ function registerIpc() {
     const perm = process.platform === 'darwin' ? (await import('electron')).systemPreferences.getMediaAccessStatus('screen') : 'granted';
     if (perm !== 'granted') {
       desktopCapturer.getSources({ types: ['screen'] }).catch(() => {}); // triggers the macOS prompt
-      return { ok: false, error: 'Allow Screen Recording for Paneo in System Settings → Privacy & Security, then reconnect.' };
+      return { ok: false, error: 'Allow Screen Recording for CastDesk in System Settings → Privacy & Security, then reconnect.' };
     }
     pendingCaptureNativeId = target.nativeId;
     return { ok: true };
@@ -358,13 +423,14 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc();
     await startHost();
     createTray();
+    createCaptureWindow();
     createWindow();
 
     if (!settings.firstRunDone) {
       settings.firstRunDone = true;
       saveSettings();
       await applyAutostart().catch(() => {});
-      new Notification({ title: 'Paneo will start with your computer', body: 'So your devices reconnect automatically. Change this in Preferences.' }).show();
+      new Notification({ title: 'CastDesk will start with your computer', body: 'So your devices reconnect automatically. Change this in Preferences.' }).show();
     }
   });
 

@@ -2,7 +2,7 @@
  * Tiny dependency-free byte helpers + SHA-256 + HMAC-SHA-256.
  *
  * These are implemented in plain JS on purpose: the browser WebCrypto API
- * (`crypto.subtle`) only exists in secure contexts, and Paneo web clients
+ * (`crypto.subtle`) only exists in secure contexts, and CastDesk web clients
  * are frequently served from plain `http://192.168.x.x` on a LAN. A pure-JS
  * implementation works everywhere (Node, Electron, Android WebView, Safari).
  * It is verified against the official test vectors in test/bytes.test.js.

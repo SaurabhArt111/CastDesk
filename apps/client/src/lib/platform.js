@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 
 /** Where is this UI running? One codebase ships to all of these. */
-export const bridge = typeof window !== 'undefined' ? window.paneo || null : null; // Electron preload bridge
+export const bridge = typeof window !== 'undefined' ? window.castdesk || null : null; // Electron preload bridge
 export const isElectron = Boolean(bridge);
 export const isNative = !isElectron && Capacitor.isNativePlatform();
 export const isWeb = !isElectron && !isNative;
@@ -31,5 +31,5 @@ export function deviceKind(platform) {
 export const platformLabel = (p) =>
   ({ windows: 'Windows', win32: 'Windows', macos: 'macOS', darwin: 'macOS', linux: 'Linux', android: 'Android', ios: 'iOS', web: 'Browser' }[p] || 'Device');
 
-/** Served by a Paneo host (PWA)? Then that host is our default connection target. */
+/** Served by a CastDesk host (PWA)? Then that host is our default connection target. */
 export const servedByHost = isWeb && /^https?:$/.test(location.protocol) && !['5173', '4173'].includes(location.port) && location.hostname !== '';

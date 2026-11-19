@@ -3,7 +3,7 @@ import Icon from '../components/Icons.jsx';
 import { Callout, CodeBlock, PageHero } from '../components/Layout.jsx';
 import { SITE } from '../data/site.js';
 
-const TREE = `paneo/
+const TREE = `castdesk/
 ├─ packages/
 │  ├─ shared/   protocol, PIN pairing (SPEKE), gestures, display-layout maths
 │  └─ host/     host service: WebSocket server, trust store, input, displays, USB, discovery
@@ -33,14 +33,14 @@ export default function Source() {
 
         <h2>Get it running</h2>
         <p>You need Node.js 20 or newer (22 recommended).</p>
-        <CodeBlock label="Clone and test">{`git clone ${SITE.repo}.git\ncd paneo\nnpm install\nnpm test`}</CodeBlock>
+        <CodeBlock label="Clone and test">{`git clone ${SITE.repo}.git\ncd castdesk\nnpm install\nnpm test`}</CodeBlock>
         <CodeBlock label="Run the desktop app in development">{`npm run build:client     # builds the phone/web app the desktop serves\nnpm run dev:desktop`}</CodeBlock>
         <CodeBlock label="Run the host without a window (servers, tests)">{`npm run host:headless`}</CodeBlock>
 
         <h2>Build installers</h2>
         <CodeBlock label="Desktop (run on the target OS)">{`npm run build:desktop    # Windows: nsis + msi + portable · macOS: dmg + zip · Linux: AppImage + deb + rpm`}</CodeBlock>
         <CodeBlock label="Android APK (needs JDK 21 + Android SDK)">{`npm run build:client\ncd apps/client\nnpx cap sync android\ncd android && ./gradlew assembleDebug\n# → app/build/outputs/apk/debug/app-debug.apk`}</CodeBlock>
-        <CodeBlock label="This website">{`npm run build -w @paneo/site   # → apps/site/dist (static files, host anywhere)`}</CodeBlock>
+        <CodeBlock label="This website">{`npm run build -w @castdesk/site   # → apps/site/dist (static files, host anywhere)`}</CodeBlock>
         <Callout tone="info" title="Automated releases">
           Pushing a tag like <code>v{SITE.version}</code> runs <code>.github/workflows/release.yml</code>, which builds every installer and the APK on GitHub-hosted machines and attaches them, with checksums, to a release. Add signing certificates as repository secrets to produce signed builds.
         </Callout>
@@ -52,7 +52,7 @@ export default function Source() {
           <li><b>End-to-end</b> — <code>node scripts/e2e-electron.mjs</code> launches the real Electron app under a virtual display and drives it from a phone-sized browser (pairs, streams frames, moves the real cursor, reconnects, revokes).</li>
         </ul>
 
-        <h2>Extending Paneo</h2>
+        <h2>Extending CastDesk</h2>
         <ul>
           <li><b>Virtual-display drivers</b> — implement a provider in <code>packages/host/src/displays/providers.js</code>, or just set create/remove commands in Settings.</li>
           <li><b>Input backends</b> — <code>packages/host/src/input/injector.js</code> is pluggable (nut-js by default).</li>

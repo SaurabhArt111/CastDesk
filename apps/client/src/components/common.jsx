@@ -6,7 +6,7 @@ export function Logo({ size = 28 }) {
   return (
     <span className="logo">
       <img src="./icon.svg" width={size} height={size} alt="" />
-      <span>Paneo</span>
+      <span>CastDesk</span>
     </span>
   );
 }

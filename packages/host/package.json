@@ -1,22 +1,22 @@
 {
-  "name": "@paneo/host",
+  "name": "@castdesk/host",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Paneo host service: pairing, trusted devices, frame relay, discovery, input injection, USB forwarding, autostart.",
+  "description": "CastDesk host service: pairing, trusted devices, frame relay, discovery, input injection, USB forwarding, autostart.",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js"
   },
   "bin": {
-    "paneo-host": "./src/cli.js"
+    "castdesk-host": "./src/cli.js"
   },
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "start": "node src/cli.js"
   },
   "dependencies": {
-    "@paneo/shared": "*",
+    "@castdesk/shared": "*",
     "bonjour-service": "^1.3.0",
     "ws": "^8.18.0"
   },

@@ -16,7 +16,7 @@ export async function getPermissions({ host, settings, app }) {
     items.push({
       id: 'screen',
       title: 'Screen Recording',
-      description: 'Lets Paneo send this Mac’s screen to your other devices. The picture only leaves this Mac when a paired device is watching.',
+      description: 'Lets CastDesk send this Mac’s screen to your other devices. The picture only leaves this Mac when a paired device is watching.',
       status: screenStatus === 'granted' ? 'granted' : 'missing',
       action: screenStatus === 'granted' ? null : { label: 'Open Screen Recording settings' },
     });
@@ -31,15 +31,15 @@ export async function getPermissions({ host, settings, app }) {
     items.push({
       id: 'localnetwork',
       title: 'Local Network',
-      description: 'macOS asks the first time Paneo looks for nearby devices. Choose Allow. If you chose Don’t Allow: System Settings → Privacy & Security → Local Network.',
+      description: 'macOS asks the first time CastDesk looks for nearby devices. Choose Allow. If you chose Don’t Allow: System Settings → Privacy & Security → Local Network.',
       status: 'info',
       action: null,
     });
   }
 
   if (p === 'win32') {
-    const { stdout } = await run('netsh', ['advfirewall', 'firewall', 'show', 'rule', 'name=Paneo']);
-    const has = /Paneo/i.test(stdout) && !/No rules match/i.test(stdout);
+    const { stdout } = await run('netsh', ['advfirewall', 'firewall', 'show', 'rule', 'name=CastDesk']);
+    const has = /CastDesk/i.test(stdout) && !/No rules match/i.test(stdout);
     items.push({
       id: 'firewall',
       title: 'Windows Firewall',
@@ -50,7 +50,7 @@ export async function getPermissions({ host, settings, app }) {
     items.push({
       id: 'uac',
       title: 'Controlling elevated windows',
-      description: 'Windows blocks input into apps running as Administrator (and the UAC prompt) unless Paneo is also run as administrator. Mirroring always works.',
+      description: 'Windows blocks input into apps running as Administrator (and the UAC prompt) unless CastDesk is also run as administrator. Mirroring always works.',
       status: 'info',
       action: null,
     });
@@ -86,7 +86,7 @@ export async function getPermissions({ host, settings, app }) {
   items.push({
     id: 'autostart',
     title: 'Start with this computer',
-    description: 'Paneo runs quietly in the tray after you sign in so devices reconnect automatically.',
+    description: 'CastDesk runs quietly in the tray after you sign in so devices reconnect automatically.',
     status: settings.autostart ? 'granted' : 'info',
     action: settings.autostart ? null : { label: 'Turn on autostart' },
   });
@@ -97,16 +97,16 @@ export async function fixPermission(id, { host }) {
   try {
     if (id === 'screen') {
       await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture');
-      return { ok: true, message: 'Enable Paneo in the list, then restart the app.' };
+      return { ok: true, message: 'Enable CastDesk in the list, then restart the app.' };
     }
     if (id === 'accessibility') {
       systemPreferences.isTrustedAccessibilityClient(true);
       await shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility');
-      return { ok: true, message: 'Enable Paneo in the list, then restart the app.' };
+      return { ok: true, message: 'Enable CastDesk in the list, then restart the app.' };
     }
     if (id === 'firewall') {
       const port = host.port;
-      const ps = `Start-Process -Verb RunAs -WindowStyle Hidden powershell -ArgumentList '-NoProfile','-Command','netsh advfirewall firewall add rule name=Paneo dir=in action=allow protocol=TCP localport=${port} profile=private,domain; netsh advfirewall firewall add rule name=Paneo-discovery dir=in action=allow protocol=UDP localport=5353,7421 profile=private,domain'`;
+      const ps = `Start-Process -Verb RunAs -WindowStyle Hidden powershell -ArgumentList '-NoProfile','-Command','netsh advfirewall firewall add rule name=CastDesk dir=in action=allow protocol=TCP localport=${port} profile=private,domain; netsh advfirewall firewall add rule name=CastDesk-discovery dir=in action=allow protocol=UDP localport=5353,7421 profile=private,domain'`;
       await run('powershell', ['-NoProfile', '-Command', ps]);
       return { ok: true, message: 'Firewall rule requested. Accept the Windows prompt.' };
     }

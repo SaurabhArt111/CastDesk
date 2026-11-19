@@ -1,7 +1,7 @@
 import {
   MSG, PROTOCOL_VERSION, PIN_MAX_ATTEMPTS, Speke, randomHex, newNonce, authProof, verifyProof,
-  parseMessage, sanitizeInput,
-} from '@paneo/shared';
+  parseMessage, sanitizeInput, VIDEO_CODECS,
+} from '@castdesk/shared';
 
 const AUTH_TIMEOUT_MS = 20_000;
 const clamp = (v, lo, hi, d) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -197,14 +197,26 @@ export class ClientSession {
       case MSG.SUBSCRIBE: {
         const id = m.display & 0xff;
         if (!this.host.displays.has(id)) return;
+        const codecs = Array.isArray(m.codecs) ? m.codecs.filter((c) => VIDEO_CODECS.includes(c)) : [];
         this.subs.set(id, {
           fps: clamp(m.maxFps, 1, 60, 30),
           maxWidth: clamp(m.maxWidth, 320, 7680, 1920),
           quality: clamp(m.quality, 0.2, 0.95, 0.7),
+          codecs,
+          mode: 'jpeg', // decided by the host in _demandChanged()
+          hasKey: false,
           lastSent: 0,
         });
         this.host._demandChanged();
         this.host._sendLastFrame(this, id);
+        break;
+      }
+      case MSG.KEYFRAME: {
+        const sub = this.subs.get(m.display & 0xff);
+        if (sub) {
+          sub.hasKey = false;
+          this.host._requestKey(m.display & 0xff);
+        }
         break;
       }
       case MSG.UNSUBSCRIBE:

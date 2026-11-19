@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Paneo</string>
-    <string name="title_activity_main">Paneo</string>
-    <string name="package_name">app.paneo.mobile</string>
-    <string name="custom_url_scheme">app.paneo.mobile</string>
+    <string name="app_name">CastDesk</string>
+    <string name="title_activity_main">CastDesk</string>
+    <string name="package_name">app.castdesk.mobile</string>
+    <string name="custom_url_scheme">app.castdesk.mobile</string>
 </resources>

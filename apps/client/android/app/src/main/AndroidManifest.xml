@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- ===================== Permissions (and why) =====================
-         INTERNET / ACCESS_NETWORK_STATE : open the socket to your computer. Used for LAN/USB only - Paneo never contacts the internet.
+         INTERNET / ACCESS_NETWORK_STATE : open the socket to your computer. Used for LAN/USB only - CastDesk never contacts the internet.
          ACCESS_WIFI_STATE / CHANGE_WIFI_MULTICAST_STATE : Bonjour/mDNS discovery of nearby computers.
          NEARBY_WIFI_DEVICES (never for location) : local-network discovery on Android 13+.
          ACCESS_LOCAL_NETWORK : local-network access on the newest Android versions; ignored by older ones.
@@ -50,12 +50,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- paneo://connect?host=...&port=...&pin=...  (QR codes, and the desktop app launching us over USB) -->
+            <!-- castdesk://connect?host=...&port=...&pin=...  (QR codes, and the desktop app launching us over USB) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="paneo" android:host="connect" />
+                <data android:scheme="castdesk" android:host="connect" />
             </intent-filter>
 
         </activity>

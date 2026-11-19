@@ -27,7 +27,7 @@ if (!healthy()) {
   console.log('Electron binary is missing - downloading it now (one time, ~100 MB)...');
   const r = spawnSync(process.execPath, [path.join(dir, 'install.js')], { stdio: 'inherit', cwd: dir });
   if (r.status !== 0 || !healthy()) {
-    console.error('\nCould not download Electron. Check your internet connection / proxy, then run:\n  node node_modules/electron/install.js\n(The Paneo app itself never needs the internet - only this one-time download does.)');
+    console.error('\nCould not download Electron. Check your internet connection / proxy, then run:\n  node node_modules/electron/install.js\n(The CastDesk app itself never needs the internet - only this one-time download does.)');
     process.exit(1);
   }
   console.log('Electron is ready.');

@@ -1,6 +1,6 @@
 import { isNative } from './platform.js';
 
-const COLORS = { dark: '#0B1020', light: '#F4F6FF' };
+const COLORS = { dark: '#0D2A2D', light: '#E9EFEC' };
 
 /**
  * Keep the system status bar readable: light icons/clock on the dark theme, dark ones on the light theme.

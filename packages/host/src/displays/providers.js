@@ -27,13 +27,13 @@ const linuxXrandr = {
     const res = [];
     for (const line of out.split('\n')) {
       const m = /^\s*\d+:\s+([+*]*)(\S+)\s+(\d+)\/\d+x(\d+)\/\d+\+(-?\d+)\+(-?\d+)\s+(\S+)/.exec(line);
-      if (m) res.push({ nativeId: m[7], name: m[2], w: +m[3], h: +m[4], x: +m[5], y: +m[6], primary: m[1].includes('*'), virtual: m[2].startsWith('Paneo') });
+      if (m) res.push({ nativeId: m[7], name: m[2], w: +m[3], h: +m[4], x: +m[5], y: +m[6], primary: m[1].includes('*'), virtual: m[2].startsWith('CastDesk') });
     }
     return res;
   },
   async arrange(items) {
     for (const it of items) {
-      if (it.nativeId.startsWith('Paneo')) {
+      if (it.nativeId.startsWith('CastDesk')) {
         await run('xrandr', ['--delmonitor', it.nativeId]);
         await run('xrandr', ['--setmonitor', it.nativeId, `${it.from.w}/${mm(it.from.w)}x${it.from.h}/${mm(it.from.h)}+${it.x}+${it.y}`, 'none']);
       } else {
@@ -42,7 +42,7 @@ const linuxXrandr = {
     }
   },
   async createVirtual({ w, h, x, y, name }) {
-    const id = `Paneo-${name.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || 'Device'}`;
+    const id = `CastDesk-${name.replace(/[^A-Za-z0-9]/g, '').slice(0, 12) || 'Device'}`;
     const cur = await this.list();
     const needW = Math.max(x + w, ...cur.map((d) => d.x + d.w));
     const needH = Math.max(y + h, ...cur.map((d) => d.y + d.h));

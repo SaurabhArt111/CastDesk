@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../state/AppContext.jsx';
 import Icon from '../components/Icon.jsx';
 import { Segmented, Slider, Switch } from '../components/common.jsx';
+import PurposePicker from '../components/PurposePicker.jsx';
 import { canHost, bridge, platformLabel, osName } from '../lib/platform.js';
 
 function Section({ title, children, hint }) {
@@ -15,7 +16,7 @@ function Section({ title, children, hint }) {
 }
 
 export default function Settings() {
-  const { identity, renameDevice, prefs, setPrefs, hostState, setView, toast } = useApp();
+  const { identity, renameDevice, prefs, setPrefs, hostState, toast } = useApp();
   const hs = hostState?.settings;
   const [name, setName] = useState(identity.name);
   const [port, setPort] = useState(hs?.port ?? 7420);
@@ -24,9 +25,7 @@ export default function Settings() {
   return (
     <div className="page">
       <header className="topbar">
-        <button className="btn ghost" onClick={() => setView('home')}><Icon name="back" size={16} /> Back</button>
         <h1>Preferences</h1>
-        <span />
       </header>
       <main className="page-body">
         <Section title="This device">
@@ -43,10 +42,16 @@ export default function Settings() {
           </div>
         </Section>
 
+        <Section title="When I connect, use this device as" hint="Choose what a connection does. Nothing is mixed: a trackpad is only a trackpad, a mirror is only a screen.">
+          <PurposePicker value={prefs.purpose} onChange={(v) => setPrefs({ purpose: v })} />
+          <Switch checked={prefs.touchControl} onChange={(v) => setPrefs({ touchControl: v })} label="Touch the screen to click" hint="Mirror and Extend: tapping the picture clicks on the computer." />
+          <Switch checked={prefs.penPreview} onChange={(v) => setPrefs({ penPreview: v })} label="Show the screen under the pen pad" hint="Off keeps the pen pad blank, like a graphics tablet." />
+        </Section>
+
         {canHost && hs && (
           <>
-            <Section title="Startup" hint="Paneo can run quietly in the tray so your devices connect the moment you sit down.">
-              <Switch checked={hs.autostart} onChange={(v) => host({ autostart: v })} label="Start Paneo when I sign in" hint="Autostart on this computer." />
+            <Section title="Startup" hint="CastDesk can run quietly in the tray so your devices connect the moment you sit down.">
+              <Switch checked={hs.autostart} onChange={(v) => host({ autostart: v })} label="Start CastDesk when I sign in" hint="Autostart on this computer." />
               <Switch checked={hs.startMinimized} onChange={(v) => host({ startMinimized: v })} label="Start minimized to tray" hint="Runs in the background without opening a window." disabled={!hs.autostart} />
             </Section>
 
@@ -61,7 +66,7 @@ export default function Settings() {
                 <span className="row-text"><span className="row-title">Port</span><span className="row-hint">Allow this TCP port through your firewall. Restart to apply.</span></span>
                 <span className="inline-form tight">
                   <input className="input narrow" type="number" min="1024" max="65535" value={port} onChange={(e) => setPort(Number(e.target.value))} />
-                  <button className="btn" disabled={port === hs.port || port < 1024 || port > 65535} onClick={() => { host({ port }); toast('Port saved. Restart Paneo to apply.', 'ok'); }}>Save</button>
+                  <button className="btn" disabled={port === hs.port || port < 1024 || port > 65535} onClick={() => { host({ port }); toast('Port saved. Restart CastDesk to apply.', 'ok'); }}>Save</button>
                 </span>
               </div>
             </Section>
@@ -106,7 +111,7 @@ export default function Settings() {
         </Section>
 
         <Section title="About">
-          <div className="row"><span className="row-text"><span className="row-title">Paneo {hostState?.version || '1.0.0'}</span><span className="row-hint">Everything stays on your network or USB cable. No account, no cloud, no telemetry.</span></span></div>
+          <div className="row"><span className="row-text"><span className="row-title">CastDesk {hostState?.version || '1.0.0'}</span><span className="row-hint">Everything stays on your network or USB cable. No account, no cloud, no telemetry.</span></span></div>
         </Section>
       </main>
     </div>

@@ -4,10 +4,10 @@
  * release workflow produce (see .github/workflows/release.yml).
  */
 export const SITE = {
-  name: 'Paneo',
+  name: 'CastDesk',
   tagline: 'Every screen. One desk.',
   version: '1.0.0',
-  repo: 'https://github.com/paneo/paneo',
+  repo: 'https://github.com/SaurabhArt111/Paneo',
   get releases() {
     return `${this.repo}/releases`;
   },
@@ -26,12 +26,12 @@ export const DOWNLOADS = [
     os: 'Windows',
     icon: 'window',
     requires: 'Windows 10 or 11 · 64-bit Intel/AMD or ARM',
-    note: 'The installer adds the Windows Firewall rule for you and can start Paneo with Windows.',
+    note: 'The installer adds the Windows Firewall rule for you and can start CastDesk with Windows.',
     files: [
-      { label: 'Installer', ext: '.exe', file: `Paneo-Setup-${v}-x64.exe`, detail: '64-bit Intel / AMD', primary: true },
-      { label: 'Installer (ARM)', ext: '.exe', file: `Paneo-Setup-${v}-arm64.exe`, detail: 'Windows on ARM' },
-      { label: 'MSI package', ext: '.msi', file: `Paneo-${v}-x64.msi`, detail: 'For IT deployment' },
-      { label: 'Portable', ext: '.exe', file: `Paneo-Portable-${v}.exe`, detail: 'No install, run from anywhere' },
+      { label: 'Installer', ext: '.exe', file: `CastDesk-Setup-${v}-x64.exe`, detail: '64-bit Intel / AMD', primary: true },
+      { label: 'Installer (ARM)', ext: '.exe', file: `CastDesk-Setup-${v}-arm64.exe`, detail: 'Windows on ARM' },
+      { label: 'MSI package', ext: '.msi', file: `CastDesk-${v}-x64.msi`, detail: 'For IT deployment' },
+      { label: 'Portable', ext: '.exe', file: `CastDesk-Portable-${v}.exe`, detail: 'No install, run from anywhere' },
     ],
   },
   {
@@ -39,10 +39,10 @@ export const DOWNLOADS = [
     os: 'macOS',
     icon: 'laptop',
     requires: 'macOS 12 or later · Apple silicon and Intel (universal)',
-    note: 'macOS will ask for Screen Recording and Accessibility the first time. Paneo explains each prompt.',
+    note: 'macOS will ask for Screen Recording and Accessibility the first time. CastDesk explains each prompt.',
     files: [
-      { label: 'Disk image', ext: '.dmg', file: `Paneo-${v}-universal.dmg`, detail: 'Drag to Applications', primary: true },
-      { label: 'Zip archive', ext: '.zip', file: `Paneo-${v}-mac-universal.zip`, detail: 'Same app, zipped' },
+      { label: 'Disk image', ext: '.dmg', file: `CastDesk-${v}-universal.dmg`, detail: 'Drag to Applications', primary: true },
+      { label: 'Zip archive', ext: '.zip', file: `CastDesk-${v}-mac-universal.zip`, detail: 'Same app, zipped' },
     ],
   },
   {
@@ -52,9 +52,9 @@ export const DOWNLOADS = [
     requires: 'X11 session recommended (Wayland: mirroring only) · x86-64',
     note: 'AppImage runs on most distributions: make it executable and double-click.',
     files: [
-      { label: 'AppImage', ext: '.AppImage', file: `Paneo-${v}-x86_64.AppImage`, detail: 'Any distribution', primary: true },
-      { label: 'Debian / Ubuntu', ext: '.deb', file: `paneo_${v}_amd64.deb`, detail: 'sudo apt install ./file.deb' },
-      { label: 'Fedora / openSUSE', ext: '.rpm', file: `paneo-${v}.x86_64.rpm`, detail: 'sudo dnf install ./file.rpm' },
+      { label: 'AppImage', ext: '.AppImage', file: `CastDesk-${v}-x86_64.AppImage`, detail: 'Any distribution', primary: true },
+      { label: 'Debian / Ubuntu', ext: '.deb', file: `castdesk_${v}_amd64.deb`, detail: 'sudo apt install ./file.deb' },
+      { label: 'Fedora / openSUSE', ext: '.rpm', file: `castdesk-${v}.x86_64.rpm`, detail: 'sudo dnf install ./file.rpm' },
     ],
   },
   {
@@ -63,7 +63,7 @@ export const DOWNLOADS = [
     icon: 'phone',
     requires: 'Android 7.0 or later · phones, tablets, Chromebooks',
     note: 'Sideload the APK (allow “Install unknown apps” for your browser or file manager once).',
-    files: [{ label: 'APK', ext: '.apk', file: `Paneo-${v}.apk`, detail: 'Phones & tablets', primary: true }],
+    files: [{ label: 'APK', ext: '.apk', file: `CastDesk-${v}.apk`, detail: 'Phones & tablets', primary: true }],
   },
   {
     id: 'ios',
@@ -79,7 +79,7 @@ export const DOWNLOADS = [
     os: 'Any browser',
     icon: 'globe',
     requires: 'Chrome, Edge, Firefox, Safari — Smart TVs & kiosks too',
-    note: 'The desktop app serves the viewer itself. Nothing to install on the second device — type the address shown in Paneo.',
+    note: 'The desktop app serves the viewer itself. Nothing to install on the second device — type the address shown in CastDesk.',
     files: [],
     web: true,
   },
@@ -108,15 +108,15 @@ export function detectOS() {
 export const FAQ = [
   {
     q: 'Does it need the internet?',
-    a: 'No. Paneo only talks between your own devices: over Wi-Fi or Ethernet on the same network, over a USB cable, or on a network with no internet at all (a router with the WAN unplugged, a phone hotspot with mobile data off, a USB-C cable). It has no accounts, no cloud relay and no telemetry. The website you are reading is the only thing that needs the internet — to download the app.',
+    a: 'No. CastDesk only talks between your own devices: over Wi-Fi or Ethernet on the same network, over a USB cable, or on a network with no internet at all (a router with the WAN unplugged, a phone hotspot with mobile data off, a USB-C cable). It has no accounts, no cloud relay and no telemetry. The website you are reading is the only thing that needs the internet — to download the app.',
   },
   {
     q: 'How is this different from a remote-desktop app?',
-    a: 'Remote desktop tools are built to reach a computer across the internet. Paneo is built for the desk: a second screen, a trackpad, a keyboard or a pen tablet for the computer next to you, with low latency and automatic reconnection. Everything stays on your local network or cable.',
+    a: 'Remote desktop tools are built to reach a computer across the internet. CastDesk is built for the desk: a second screen, a trackpad, a keyboard or a pen tablet for the computer next to you, with low latency and automatic reconnection. Everything stays on your local network or cable.',
   },
   {
     q: 'What is “Mirror” versus “Extend”?',
-    a: 'Mirror shows an existing display of your computer on the other device. Extend adds a brand-new virtual monitor to your computer and shows that on the other device, so it behaves like a real second screen you can drag windows onto. Mirroring works everywhere out of the box. Extending needs a virtual-display driver on the host computer — see the guide for the one-time setup on Windows and macOS. On Linux with X11 Paneo can create the monitor itself (experimental).',
+    a: 'Mirror shows an existing display of your computer on the other device. Extend adds a brand-new virtual monitor to your computer and shows that on the other device, so it behaves like a real second screen you can drag windows onto. Mirroring works everywhere out of the box. Extending needs a virtual-display driver on the host computer — see the guide for the one-time setup on Windows and macOS. On Linux with X11 CastDesk can create the monitor itself (experimental).',
   },
   {
     q: 'Do I have to type a PIN every time?',
@@ -124,7 +124,7 @@ export const FAQ = [
   },
   {
     q: 'Is the PIN safe on a shared Wi-Fi?',
-    a: 'The PIN is never sent over the network, not even hashed. Paneo uses a password-authenticated key exchange (SPEKE), so someone recording the traffic cannot test PIN guesses offline. A wrong guess costs one of five attempts, after which the PIN is replaced with a new one, and a PIN is single-use and expires after five minutes.',
+    a: 'The PIN is never sent over the network, not even hashed. CastDesk uses a password-authenticated key exchange (SPEKE), so someone recording the traffic cannot test PIN guesses offline. A wrong guess costs one of five attempts, after which the PIN is replaced with a new one, and a PIN is single-use and expires after five minutes.',
   },
   {
     q: 'Is the video encrypted?',
@@ -132,11 +132,11 @@ export const FAQ = [
   },
   {
     q: 'Can my phone or tablet be a trackpad, keyboard or graphics tablet?',
-    a: 'Yes. Touch mode taps exactly where you touch the picture. Trackpad mode behaves like a laptop trackpad with tap-to-click, two-finger scroll, pinch-zoom, drag-and-drop and three-finger swipes. Pen mode maps the whole surface to the screen like a drawing tablet and sends pressure and tilt. Keys mode is a full keyboard with Ctrl, Alt, Shift and Win/Cmd that stay held for shortcuts.',
+    a: 'Yes, and you choose which one. Mirror lets you tap exactly where you touch the picture. Trackpad mode behaves like a laptop trackpad with tap-to-click, two-finger scroll, pinch-zoom, drag-and-drop and three-finger swipes. Pen pad maps the whole surface to the screen like a drawing tablet and sends pressure and tilt. Keyboard mode is a full keyboard with Ctrl, Alt, Shift and Win/Cmd that stay held for shortcuts.',
   },
   {
     q: 'Does pen pressure work in Photoshop, Krita, and similar apps?',
-    a: 'Paneo sends position, pressure, tilt and eraser state. Today the host injects the pen as a precise mouse with the stylus button mapped to the left button; true pressure-sensitive injection needs a native pen driver on each OS (Windows Ink injection, a Wacom-style virtual tablet) and is on the roadmap. Drawing, handwriting and precise pointing work now.',
+    a: 'CastDesk sends position, pressure, tilt and eraser state. Today the host injects the pen as a precise mouse with the stylus button mapped to the left button; true pressure-sensitive injection needs a native pen driver on each OS (Windows Ink injection, a Wacom-style virtual tablet) and is on the roadmap. Drawing, handwriting and precise pointing work now.',
   },
   {
     q: 'Which devices can connect to which?',
@@ -144,11 +144,11 @@ export const FAQ = [
   },
   {
     q: 'How do I connect over USB?',
-    a: 'Android: enable USB debugging and plug in — Paneo sets up an adb tunnel and opens the app on the phone. Or turn on USB tethering. iPhone and iPad: plug in and turn on Personal Hotspot — the cable becomes a network link. Computer to computer: use a USB networking cable or USB-Ethernet adapters, or Thunderbolt/USB4 networking. The guide has step-by-step instructions.',
+    a: 'Android: enable USB debugging and plug in — CastDesk sets up an adb tunnel and opens the app on the phone. Or turn on USB tethering. iPhone and iPad: plug in and turn on Personal Hotspot — the cable becomes a network link. Computer to computer: use a USB networking cable or USB-Ethernet adapters, or Thunderbolt/USB4 networking. The guide has step-by-step instructions.',
   },
   {
     q: 'Will it start by itself when I log in?',
-    a: 'Yes, if you want it to: Paneo starts in the system tray at login (you can turn this off in Preferences) so your paired devices connect the moment you sit down. It uses the OS’s own login-item mechanism: Task Scheduler-free, no background service, no admin rights.',
+    a: 'Yes, if you want it to: CastDesk starts in the system tray at login (you can turn this off in Preferences) so your paired devices connect the moment you sit down. It uses the OS’s own login-item mechanism: Task Scheduler-free, no background service, no admin rights.',
   },
   {
     q: 'What permissions does it ask for, and why?',
@@ -156,6 +156,6 @@ export const FAQ = [
   },
   {
     q: 'Is it free? Is it open source?',
-    a: 'Yes and yes. Paneo is released under the MIT license. The whole stack — desktop app, Android app, protocol, this website — is in one repository.',
+    a: 'Yes and yes. CastDesk is released under the MIT license. The whole stack — desktop app, Android app, protocol, this website — is in one repository.',
   },
 ];

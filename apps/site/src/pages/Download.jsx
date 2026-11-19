@@ -11,7 +11,7 @@ function Recommended({ item }) {
     <section className="recommended card">
       <div>
         <span className="eyebrow">Recommended for your device</span>
-        <h2><Icon name={item.icon} size={26} /> Paneo for {item.os}</h2>
+        <h2><Icon name={item.icon} size={26} /> CastDesk for {item.os}</h2>
         <p className="muted">Version {SITE.version} · {item.requires}</p>
       </div>
       {main ? (
@@ -53,7 +53,7 @@ function Card({ item }) {
       )}
       {item.id === 'ios' && (
         <ol className="mini-steps">
-          <li>Install Paneo on your PC or Mac and open it.</li>
+          <li>Install CastDesk on your PC or Mac and open it.</li>
           <li>On the iPhone/iPad, join the same Wi-Fi (or plug in and turn on Personal Hotspot).</li>
           <li>In Safari, open <code>http://&lt;your-PC-address&gt;:{SITE.port}</code> — the address is shown in the app.</li>
           <li>Tap Share → <b>Add to Home Screen</b>. Enter the PIN once.</li>
@@ -61,7 +61,7 @@ function Card({ item }) {
       )}
       {item.id === 'web' && (
         <ol className="mini-steps">
-          <li>Open Paneo on the computer you want to share.</li>
+          <li>Open CastDesk on the computer you want to share.</li>
           <li>On any other device, open <code>http://&lt;address&gt;:{SITE.port}</code> in a browser.</li>
           <li>Pick your computer, enter the PIN once, and you are in.</li>
         </ol>
@@ -70,7 +70,7 @@ function Card({ item }) {
         <ol className="mini-steps">
           <li>Download the APK on the phone (or copy it over USB).</li>
           <li>Open it and allow “Install unknown apps” for that app when asked.</li>
-          <li>Open Paneo. For USB: enable <b>USB debugging</b> and plug into the PC.</li>
+          <li>Open CastDesk. For USB: enable <b>USB debugging</b> and plug into the PC.</li>
         </ol>
       )}
     </article>
@@ -82,7 +82,7 @@ export default function Download() {
   const rec = DOWNLOADS.find((d) => d.id === os) || DOWNLOADS[0];
   return (
     <>
-      <PageHero eyebrow={`Version ${SITE.version}`} title="Download Paneo">
+      <PageHero eyebrow={`Version ${SITE.version}`} title="Download CastDesk">
         Free for every platform. Install it on the computer you want to share, and on the devices you want to use with it.
       </PageHero>
       <div className="container page-body">
@@ -95,8 +95,8 @@ export default function Download() {
         <section className="card" id="verify">
           <h2>Verify your download</h2>
           <p>Every release ships a <code>SHA256SUMS.txt</code> file. Compare it with your download:</p>
-          <CodeBlock label="Windows (PowerShell)">{`Get-FileHash .\\Paneo-Setup-${SITE.version}-x64.exe -Algorithm SHA256`}</CodeBlock>
-          <CodeBlock label="macOS / Linux">{`shasum -a 256 Paneo-${SITE.version}-universal.dmg`}</CodeBlock>
+          <CodeBlock label="Windows (PowerShell)">{`Get-FileHash .\\CastDesk-Setup-${SITE.version}-x64.exe -Algorithm SHA256`}</CodeBlock>
+          <CodeBlock label="macOS / Linux">{`shasum -a 256 CastDesk-${SITE.version}-universal.dmg`}</CodeBlock>
           <p className="muted">All releases and checksums: <a href={SITE.releases} target="_blank" rel="noreferrer">GitHub Releases</a>.</p>
         </section>
 

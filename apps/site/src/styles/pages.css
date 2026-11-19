@@ -22,8 +22,8 @@
 
 /* ---------- home ---------- */
 .hero { padding: 72px 0 56px; background:
-  radial-gradient(900px 420px at 80% -10%, rgba(34, 211, 238, .14), transparent 60%),
-  radial-gradient(800px 420px at 0% 0%, rgba(99, 102, 241, .2), transparent 60%); overflow: hidden; }
+  radial-gradient(900px 420px at 80% -10%, rgba(98, 198, 134, .18), transparent 60%),
+  radial-gradient(800px 420px at 0% 0%, rgba(199, 242, 59, .12), transparent 60%); overflow: hidden; }
 .hero-grid { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; }
 .hero-copy .lead { margin: 18px 0 28px; }
 .hero-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; padding: 0; margin: 26px 0 0; color: var(--muted); font-size: .95rem; }
@@ -46,7 +46,7 @@
 .steps li { display: flex; gap: 16px; }
 .steps h3 { margin-bottom: 4px; }
 .steps p { color: var(--muted); margin: 0; }
-.step-n { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--accent-grad); color: #fff; }
+.step-n { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; background: var(--accent-grad); color: var(--on-accent); }
 
 .diagram { width: 100%; height: auto; }
 .d-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
@@ -74,7 +74,7 @@
 .faq[open] summary::after { content: '–'; }
 .faq p { padding: 0 20px 18px; margin: 0; color: var(--muted); }
 
-.cta-band { margin-top: 60px; padding: 72px 0; text-align: center; color: #fff; background: linear-gradient(135deg, #4338ca, #0891b2); }
+.cta-band { margin-top: 60px; padding: 72px 0; text-align: center; color: #fff; background: linear-gradient(135deg, #1e4a4e, #12363a); }
 .cta-band h2 { color: #fff; }
 .cta-band p { opacity: .9; }
 
@@ -110,7 +110,7 @@
 .callout { display: flex; gap: 14px; padding: 16px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-block: 18px; }
 .callout .icon { margin-top: 2px; }
 .callout strong { display: block; margin-bottom: 2px; }
-.callout-info { background: var(--info-soft); border-color: rgba(34, 211, 238, .3); }
+.callout-info { background: var(--info-soft); border-color: rgba(98, 198, 134, .35); }
 .callout-info .icon { color: var(--accent-2); }
 .callout-ok { background: var(--ok-soft); border-color: rgba(52, 211, 153, .3); }
 .callout-ok .icon { color: var(--ok); }

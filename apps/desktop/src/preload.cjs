@@ -8,7 +8,7 @@ const on = (channel, cb) => {
 };
 
 // The only surface the web UI can reach. Every call is validated again in the main process.
-contextBridge.exposeInMainWorld('paneo', {
+contextBridge.exposeInMainWorld('castdesk', {
   platform: process.platform,
   // the sandboxed preload has no access to the os module, so the main process answers this
   hostname: ipcRenderer.sendSync('app:hostname'),
@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('paneo', {
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   rotatePin: () => ipcRenderer.invoke('pin:rotate'),
   refreshScan: () => ipcRenderer.invoke('scan:refresh'),
+  installAdb: () => ipcRenderer.invoke('usb:installAdb'),
   revoke: (id) => ipcRenderer.invoke('trusted:revoke', id),
   setPermissions: (id, perms) => ipcRenderer.invoke('trusted:perms', id, perms),
   disconnectClient: (id) => ipcRenderer.invoke('client:disconnect', id),

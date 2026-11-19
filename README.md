@@ -1,9 +1,10 @@
-# Paneo
+# CastDesk
 
 **Every screen. One desk.** Mirror, extend and control screens between PCs, Macs, phones, tablets and browsers over **USB or your local network — no internet, no account, no cloud.**
 
 - **Mirror or extend** a display to another device.
-- **Touch, trackpad, pen and keyboard** modes for phones and tablets, with multi-touch gestures.
+- **You choose what a device is for**: Mirror, Extend, Trackpad, Keyboard or Pen pad. Each is its own full-screen experience (a trackpad is only a trackpad; it never shares the screen with a video).
+- **Smooth over Wi-Fi**: H.264 / VP8 hardware-accelerated video via WebCodecs, with a JPEG fallback for old browsers.
 - **Pair once with a 6-digit PIN**, then devices reconnect automatically with no PIN (Continuity-style).
 - **PC ↔ PC** mirror or extend; every desktop install can host and view.
 - **Arrange displays** by drag-and-drop with Windows-style snapping; each device's position is remembered.
@@ -39,14 +40,16 @@ npm run dev:site          # run the website on http://localhost:5180
 
 Headless host (servers, CI): `npm run host:headless`.
 
-Installers and the APK: see [`docs/BUILD.md`](docs/BUILD.md).
+Installers and the APK: see [`docs/BUILD.md`](docs/BUILD.md). **Windows .exe in 3 minutes: [`docs/BUILD-EXE.md`](docs/BUILD-EXE.md)** (double-click `scripts/build-exe.bat`).
+
+Source: <https://github.com/SaurabhArt111/Paneo>
 
 ## What has been verified — and what hasn't
 
 Verified automatically in a Linux environment:
 
-- Shared (12) and host (14) test suites, including real WebSocket pairing, wrong-PIN lock-out, trusted reconnect, revoke, input whitelist and extend-display flow.
-- End-to-end: the real Electron app under Xvfb, driven by a phone-sized Chrome (`node scripts/e2e-electron.mjs`): pairs with the PIN, streams live frames, moves the real cursor via the trackpad, reconnects with no PIN, revokes. Add `--shots <dir> [--dark]` to save UI screenshots.
+- Shared (12), host (17) and desktop (4) test suites, including real WebSocket pairing, wrong-PIN lock-out, trusted reconnect, revoke, input whitelist and extend-display flow.
+- End-to-end: the real Electron app under Xvfb, driven by a phone-sized Chrome (`node scripts/e2e-electron.mjs`): pairs with the PIN, streams live H.264/VP8 frames from the hidden capture window, switches between Mirror / Trackpad / Keyboard / Pen, moves the real cursor via the trackpad, reconnects with no PIN, revokes. Add `--shots <dir> [--dark]` to save UI screenshots.
 - The packaged Linux build boots and serves `/api/info` and the PWA.
 - Client and site production builds; site pages load without console errors at desktop and phone widths.
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fitToBox, snapDisplay, desktopBounds } from '@paneo/shared';
+import { fitToBox, snapDisplay, desktopBounds } from '@castdesk/shared';
 
 /**
  * Drag-and-drop display arrangement, modelled on Windows "Display settings":

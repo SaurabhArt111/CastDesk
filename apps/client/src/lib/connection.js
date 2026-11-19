@@ -1,6 +1,6 @@
 import {
   MSG, PROTOCOL_VERSION, Speke, newNonce, authProof, verifyProof, decodeFrame, parseMessage, toHex,
-} from '@paneo/shared';
+} from '@castdesk/shared';
 import { osName } from './platform.js';
 
 export class ConnectError extends Error {
@@ -44,7 +44,7 @@ function openFirst(addresses, port, timeoutMs) {
 }
 
 /**
- * A live connection to a Paneo host: handshake (PIN pairing or trusted
+ * A live connection to a CastDesk host: handshake (PIN pairing or trusted
  * auto-auth), then frames in / input out.
  */
 export class HostConnection {
@@ -191,8 +191,12 @@ export class HostConnection {
     if (this.ws?.readyState === 1) this.ws.send(JSON.stringify(o));
   }
 
-  subscribe(display, { maxFps = 30, maxWidth = 1920, quality = 0.7 } = {}) {
-    this.#send({ t: MSG.SUBSCRIBE, display, maxFps, maxWidth, quality });
+  subscribe(display, { maxFps = 30, maxWidth = 1920, quality = 0.7, codecs = [] } = {}) {
+    this.#send({ t: MSG.SUBSCRIBE, display, maxFps, maxWidth, quality, codecs });
+  }
+  /** Ask the host for a fresh key frame (after a decode error or a dropped frame). */
+  requestKey(display) {
+    this.#send({ t: MSG.KEYFRAME, display });
   }
   unsubscribe(display) {
     this.#send({ t: MSG.UNSUBSCRIBE, display });

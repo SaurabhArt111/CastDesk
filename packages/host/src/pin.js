@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
-import { PIN_LENGTH, PIN_TTL_MS, PIN_MAX_ATTEMPTS } from '@paneo/shared';
+import { PIN_LENGTH, PIN_TTL_MS, PIN_MAX_ATTEMPTS } from '@castdesk/shared';
 
 /**
  * One-time pairing PIN. It rotates after a successful pairing, after it

@@ -11,7 +11,7 @@ const GROUPS = [
   {
     title: 'Startup (computer)',
     rows: [
-      ['Start Paneo when I sign in', 'On / Off', 'On', 'Autostart through the OS login-item mechanism.'],
+      ['Start CastDesk when I sign in', 'On / Off', 'On', 'Autostart through the OS login-item mechanism.'],
       ['Start minimized to tray', 'On / Off', 'On', 'Run quietly in the background; open from the tray icon.'],
     ],
   },
@@ -67,17 +67,17 @@ export default function Preferences() {
   return (
     <>
       <PageHero eyebrow="Reference" title="Preferences">
-        Every setting in Paneo, what it does and its default. Settings live in the app under <b>Settings</b>; this page is a reference.
+        Every setting in CastDesk, what it does and its default. Settings live in the app under <b>Settings</b>; this page is a reference.
       </PageHero>
       <div className="container page-body">
         <div className="two-col pref-top">
           <div>
             <Callout tone="ok" title="Sensible defaults">
-              Paneo is meant to work without touching any setting. Change things only when you want a different trade-off, for example lowering quality on slow Wi-Fi.
+              CastDesk is meant to work without touching any setting. Change things only when you want a different trade-off, for example lowering quality on slow Wi-Fi.
             </Callout>
             <p className="muted small">Defaults shown are for version 1.0. Some settings apply only to the computer that shares its screen (“host”), others only to the viewing device.</p>
           </div>
-          <DeviceFrame kind="desktop" src="/screens/desktop-settings.webp" alt="The Paneo Settings screen on a computer" />
+          <DeviceFrame kind="desktop" src="/screens/desktop-settings.webp" alt="The CastDesk Settings screen on a computer" />
         </div>
 
         {GROUPS.map((g) => (

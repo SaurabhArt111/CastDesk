@@ -16,8 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
-      - run: npm ci
+        with: { node-version: 22 }
+      - run: npm install
       - run: npm test
 
   desktop:
@@ -33,11 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: 22 }
       - name: Linux packaging tools (rpm)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm
-      - run: npm ci
+      - run: npm install
       - run: npm run build:client
       - name: Build installers
         working-directory: apps/desktop
@@ -70,11 +70,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: 22 }
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: 21 }
       - uses: android-actions/setup-android@v3
-      - run: npm ci
+      - run: npm install
       - run: npm run build:android
       - name: Build APK
         working-directory: apps/client/android
@@ -99,11 +99,11 @@ jobs:
             BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
             "$BT/zipalign" -f -p 4 "$OUT/release/app-release-unsigned.apk" aligned.apk
             "$BT/apksigner" sign --ks release.keystore --ks-key-alias "$KEY_ALIAS" \
-              --ks-pass env:KEYSTORE_PASSWORD --out "dist-apk/Paneo-$VERSION.apk" aligned.apk
+              --ks-pass env:KEYSTORE_PASSWORD --out "dist-apk/CastDesk-$VERSION.apk" aligned.apk
             rm -f release.keystore
           else
             # Debug-signed: installable by sideloading, not suitable for Google Play.
-            cp "$OUT/debug/app-debug.apk" "dist-apk/Paneo-$VERSION.apk"
+            cp "$OUT/debug/app-debug.apk" "dist-apk/CastDesk-$VERSION.apk"
           fi
       - uses: actions/upload-artifact@v4
         with:

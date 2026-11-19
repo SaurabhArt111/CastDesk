@@ -6,11 +6,14 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import WebSocket from 'ws';
 import {
-  Speke, MSG, newNonce, authProof, verifyProof, encodeFrame, decodeFrame, parseMessage, randomHex, toHex,
-} from '@paneo/shared';
+  Speke, MSG, FRAME, newNonce, authProof, verifyProof, encodeFrame, decodeFrame, parseMessage, randomHex, toHex,
+} from '@castdesk/shared';
+import http from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { installPlatformTools, AdbForwarder } from '../src/index.js';
 import { HostService, DisplayManager, InputInjector, setAutostart, isAutostart, domCodeToKeyName } from '../src/index.js';
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'paneo-test-'));
+const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'castdesk-test-'));
 
 function fakeBackend() {
   const calls = [];
@@ -238,6 +241,57 @@ test('frame relay: demand reaches the source, frames reach subscribed viewers on
   await done();
 });
 
+test('video codecs: encoded frames go to capable viewers, JPEG to the rest, key frames gate delta frames', async (t) => {
+  const { host, port, done } = await setup(t);
+  const modern = new TestClient(port);
+  await modern.open();
+  await modern.pair(host.pin.current());
+  const { list } = await modern.next(MSG.DISPLAYS);
+  const legacy = new TestClient(port);
+  await legacy.open();
+  await legacy.pair(host.pin.current());
+  await legacy.next(MSG.DISPLAYS);
+
+  const src = new WebSocket(`ws://127.0.0.1:${port}/source?token=${host.sourceToken}`);
+  const inbox = [];
+  src.on('message', (d, bin) => !bin && inbox.push(parseMessage(d)));
+  await new Promise((r) => src.on('open', r));
+  src.send(JSON.stringify({ t: 'source-caps', video: ['h264', 'vp8'] }));
+
+  const id = list[0].id;
+  modern.send({ t: MSG.SUBSCRIBE, display: id, maxFps: 30, codecs: ['vp8'] });
+  legacy.send({ t: MSG.SUBSCRIBE, display: id, maxFps: 30 });
+  await new Promise((r) => setTimeout(r, 200));
+  const demand = inbox.filter((m) => m.t === MSG.DEMAND).at(-1);
+  assert.equal(demand.displays[0].video, true);
+  assert.equal(demand.displays[0].jpeg, true);
+  assert.equal(demand.displays[0].codec, 'vp8');
+  assert.ok(inbox.some((m) => m.t === MSG.KEYFRAME), 'a new video viewer triggers a key frame request');
+
+  const chunk = crypto.randomBytes(800);
+  // delta before any key frame must not reach the viewer
+  src.send(encodeFrame({ type: FRAME.VIDEO_DELTA, displayId: id, width: 1280, height: 720, seq: 1, data: chunk }));
+  src.send(encodeFrame({ type: FRAME.VIDEO_KEY, displayId: id, width: 1280, height: 720, seq: 2, data: Buffer.concat([Buffer.from([2]), chunk]) }));
+  src.send(encodeFrame({ type: FRAME.VIDEO_DELTA, displayId: id, width: 1280, height: 720, seq: 3, data: chunk }));
+  src.send(encodeFrame({ displayId: id, width: 1280, height: 720, seq: 4, data: chunk })); // JPEG
+  await modern.waitFrames(2);
+  await legacy.waitFrames(1);
+  await new Promise((r) => setTimeout(r, 100));
+  assert.deepEqual(modern.frames.map((f) => f.type), [FRAME.VIDEO_KEY, FRAME.VIDEO_DELTA]);
+  assert.deepEqual(legacy.frames.map((f) => f.type), [FRAME.VIDEO_JPEG]);
+
+  // a viewer asking for a key frame resets the chain
+  modern.send({ t: MSG.KEYFRAME, display: id });
+  await new Promise((r) => setTimeout(r, 100));
+  src.send(encodeFrame({ type: FRAME.VIDEO_DELTA, displayId: id, width: 1280, height: 720, seq: 5, data: chunk }));
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(modern.frames.length, 2, 'delta after a resync request is held back until the next key frame');
+  src.close();
+  modern.close();
+  legacy.close();
+  await done();
+});
+
 test('input is injected only for devices with control permission', async (t) => {
   const { host, port, fb, done } = await setup(t, { settings: { defaultAllowControl: true } });
   const c = new TestClient(port);
@@ -409,15 +463,15 @@ test('real nut-js key names exist for every mapped key (when nut-js is installed
 
 test('autostart writes and removes Linux .desktop and macOS LaunchAgent entries', async () => {
   const home = tmp();
-  await setAutostart(true, { exec: '/opt/Paneo/paneo', home, platform: 'linux' });
+  await setAutostart(true, { exec: '/opt/CastDesk/castdesk', home, platform: 'linux' });
   assert.equal(await isAutostart({ home, platform: 'linux' }), true);
-  const desktop = fs.readFileSync(path.join(home, '.config/autostart/paneo.desktop'), 'utf8');
-  assert.match(desktop, /Exec=\/opt\/Paneo\/paneo --hidden/);
+  const desktop = fs.readFileSync(path.join(home, '.config/autostart/castdesk.desktop'), 'utf8');
+  assert.match(desktop, /Exec=\/opt\/CastDesk\/castdesk --hidden/);
   await setAutostart(false, { home, platform: 'linux' });
   assert.equal(await isAutostart({ home, platform: 'linux' }), false);
 
-  await setAutostart(true, { exec: '/Applications/Paneo.app/Contents/MacOS/Paneo', home, platform: 'darwin' });
-  const plist = fs.readFileSync(path.join(home, 'Library/LaunchAgents/com.paneo.app.plist'), 'utf8');
+  await setAutostart(true, { exec: '/Applications/CastDesk.app/Contents/MacOS/CastDesk', home, platform: 'darwin' });
+  const plist = fs.readFileSync(path.join(home, 'Library/LaunchAgents/com.castdesk.app.plist'), 'utf8');
   assert.match(plist, /RunAtLoad/);
   assert.match(plist, /--hidden/);
   assert.equal(await isAutostart({ home, platform: 'darwin' }), true);
@@ -437,4 +491,39 @@ test('trust store persists, hides secrets from list(), and can encrypt at rest',
   assert.equal(again.store.hostId, host.store.hostId);
   assert.equal(again.store.get('dev-12345678').secret, 'ab'.repeat(32));
   host.pin.stop(); again.pin.stop();
+});
+
+test('platform-tools installer downloads, unpacks and finds adb (local mirror)', async (t) => {
+  if (process.platform === 'win32') return t.skip('uses unzip');
+  try { execFileSync('unzip', ['-v'], { stdio: 'ignore' }); execFileSync('zip', ['-v'], { stdio: 'ignore' }); } catch { return t.skip('zip/unzip not installed'); }
+  const src = tmp();
+  fs.mkdirSync(path.join(src, 'platform-tools'));
+  fs.writeFileSync(path.join(src, 'platform-tools', 'adb'), '#!/bin/sh\necho "Android Debug Bridge version 1.0.41"\n');
+  execFileSync('zip', ['-qr', path.join(src, 'pt.zip'), 'platform-tools'], { cwd: src });
+  const zip = fs.readFileSync(path.join(src, 'pt.zip'));
+  const srv = http.createServer((req, res) => {
+    if (req.url === '/redir') { res.writeHead(302, { location: '/pt.zip' }); return res.end(); }
+    res.writeHead(200, { 'content-length': zip.length }); res.end(zip);
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  t.after(() => srv.close());
+  process.env.CASTDESK_PLATFORM_TOOLS_URL = `http://127.0.0.1:${srv.address().port}/redir`;
+  t.after(() => delete process.env.CASTDESK_PLATFORM_TOOLS_URL);
+  const dir = tmp();
+  const seen = [];
+  const adbPath = await installPlatformTools(dir, { onProgress: (p) => seen.push(p) });
+  assert.ok(fs.existsSync(adbPath));
+  assert.ok(seen.at(-1) === 100);
+  const fwd = new AdbForwarder({ toolsDir: dir });
+  assert.equal(fwd.adb, adbPath);
+  assert.equal(await fwd.available(), true);
+  // a failing download reports a readable error
+  process.env.CASTDESK_PLATFORM_TOOLS_URL = 'http://127.0.0.1:1/none.zip';
+  await assert.rejects(installPlatformTools(tmp()), /Could not reach/);
+});
+
+test('adb parseDevices keeps unauthorized and offline phones visible', () => {
+  const out = 'List of devices attached\nABC123\tunauthorized usb:1-1 transport_id:1\nXYZ\tdevice usb:1-2 product:p model:Pixel_8 device:d transport_id:2\n\n';
+  const list = AdbForwarder.parseDevices(out);
+  assert.deepEqual(list.map((d) => [d.serial, d.state, d.model]), [['ABC123', 'unauthorized', 'ABC123'], ['XYZ', 'device', 'Pixel_8']]);
 });

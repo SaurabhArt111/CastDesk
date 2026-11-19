@@ -1,6 +1,6 @@
 {
-  "appId": "app.paneo.mobile",
-  "appName": "Paneo",
+  "appId": "app.castdesk.mobile",
+  "appName": "CastDesk",
   "webDir": "dist",
   "server": {
     "androidScheme": "http",

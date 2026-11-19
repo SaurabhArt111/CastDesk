@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { DEFAULT_PORT } from '@paneo/shared';
+import { DEFAULT_PORT } from '@castdesk/shared';
 import { bridge, isElectron, isNative, servedByHost } from './platform.js';
 
 /**
@@ -73,7 +73,7 @@ export async function fetchInfo(address, port, timeoutMs = 2000) {
   try {
     const res = await fetch(`http://${address}:${port}/api/info`, { signal: ctl.signal, cache: 'no-store' });
     const info = await res.json();
-    if (info.app !== 'paneo') throw new Error('not paneo');
+    if (info.app !== 'castdesk') throw new Error('not castdesk');
     return info;
   } finally {
     clearTimeout(timer);
@@ -86,7 +86,7 @@ function startZeroconf(peers, emit) {
   (async () => {
     try {
       ({ ZeroConf } = await import('capacitor-zeroconf'));
-      await ZeroConf.watch({ type: '_paneo._tcp.', domain: 'local.' }, (res) => {
+      await ZeroConf.watch({ type: '_castdesk._tcp.', domain: 'local.' }, (res) => {
         const s = res.service || {};
         const txt = s.txtRecord || {};
         const key = `mdns:${s.name}`;
@@ -115,11 +115,11 @@ function startZeroconf(peers, emit) {
   };
 }
 
-/** Parse paneo://connect?host=..&port=..&pin=..&id=.. (QR codes and USB deep links). */
+/** Parse castdesk://connect?host=..&port=..&pin=..&id=.. (QR codes and USB deep links). */
 export function parseConnectLink(text) {
   try {
     const u = new URL(text.trim());
-    if (u.protocol !== 'paneo:') return null;
+    if (u.protocol !== 'castdesk:') return null;
     const q = u.searchParams;
     const hosts = (q.get('host') || '').split(',').filter(Boolean);
     if (!hosts.length) return null;
@@ -132,7 +132,7 @@ export function parseConnectLink(text) {
 export function buildConnectLink({ addresses, port, pin, id, name }) {
   const q = new URLSearchParams({ host: addresses.join(','), port: String(port), id, name });
   if (pin) q.set('pin', pin);
-  return `paneo://connect?${q.toString()}`;
+  return `castdesk://connect?${q.toString()}`;
 }
 
 export async function scanQr() {

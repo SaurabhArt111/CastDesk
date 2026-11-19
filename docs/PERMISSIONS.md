@@ -1,6 +1,6 @@
 # Permissions
 
-Paneo asks only for what a feature needs and explains each prompt. The desktop app has a **Permissions** screen that checks all of these and offers a "Fix" button that opens the right system page.
+CastDesk asks only for what a feature needs and explains each prompt. The desktop app has a **Permissions** screen that checks all of these and offers a "Fix" button that opens the right system page.
 
 ## macOS (host)
 
@@ -8,21 +8,21 @@ Paneo asks only for what a feature needs and explains each prompt. The desktop a
 | --- | --- | --- |
 | Screen Recording | Capturing the display | system prompt on first capture; `capture:prepare` triggers it |
 | Accessibility | Injecting mouse and keyboard from a paired device | `NSAppleEventsUsageDescription`, `entitlements.mac.plist` |
-| Local Network | Bonjour discovery and connections | `NSLocalNetworkUsageDescription`, `NSBonjourServices` (`_paneo._tcp`) |
+| Local Network | Bonjour discovery and connections | `NSLocalNetworkUsageDescription`, `NSBonjourServices` (`_castdesk._tcp`) |
 
-After granting Screen Recording, quit and reopen Paneo.
+After granting Screen Recording, quit and reopen CastDesk.
 
 ## Windows (host)
 
 - **Firewall** — the NSIS installer (`build/installer.nsh`) adds an inbound rule for private networks (TCP 7420, UDP 7421 and 5353). The Permissions screen can re-add it (needs UAC).
-- **Elevated windows** — Windows blocks input into windows of higher integrity (UAC prompts, admin tools). Run Paneo as administrator for those sessions.
+- **Elevated windows** — Windows blocks input into windows of higher integrity (UAC prompts, admin tools). Run CastDesk as administrator for those sessions.
 - **Autostart** — standard login item, `HKCU\…\Run` fallback. No admin rights.
 
 ## Linux (host)
 
 - **X11** — required for input injection. Under Wayland, mirroring works (via the portal picker) but synthetic input is blocked by the compositor.
 - **Firewall** — allow TCP 7420 and UDP 5353/7421 from your LAN (e.g. `ufw`).
-- **Autostart** — `~/.config/autostart/paneo.desktop`.
+- **Autostart** — `~/.config/autostart/castdesk.desktop`.
 
 ## Android (viewer)
 
@@ -45,6 +45,6 @@ Cleartext HTTP/WS to local addresses is permitted by `network_security_config.xm
 
 Safari asks for Local Network access the first time the page contacts the computer. Add the page to the Home Screen for a full-screen experience. There is no native iOS build yet.
 
-## What Paneo never requests
+## What CastDesk never requests
 
 Location, contacts, microphone, photos/storage, accounts or any internet permission beyond local sockets.

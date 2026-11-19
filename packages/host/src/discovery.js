@@ -1,15 +1,15 @@
 import dgram from 'node:dgram';
 import { EventEmitter } from 'node:events';
 import { Bonjour } from 'bonjour-service';
-import { MDNS_TYPE, BEACON_PORT, PROTOCOL_VERSION } from '@paneo/shared';
+import { MDNS_TYPE, BEACON_PORT, PROTOCOL_VERSION } from '@castdesk/shared';
 import { getLocalAddresses } from './net-info.js';
 
 const BEACON_INTERVAL = 3000;
 const BEACON_TTL = 10000;
 
 /**
- * Finds other Paneo devices with zero configuration and no internet:
- *  1. mDNS / Bonjour  (_paneo._tcp)         - what Apple "Continuity" style discovery uses
+ * Finds other CastDesk devices with zero configuration and no internet:
+ *  1. mDNS / Bonjour  (_castdesk._tcp)         - what Apple "Continuity" style discovery uses
  *  2. UDP broadcast beacon on port 7421         - fallback for networks that block multicast
  * Works over Wi-Fi, Ethernet and USB-tethering / USB-Ethernet links alike.
  */
@@ -62,7 +62,7 @@ export class Discovery extends EventEmitter {
       sock.on('message', (msg, rinfo) => {
         try {
           const m = JSON.parse(msg.toString());
-          if (m.app !== 'paneo' || !m.id || m.id === this.self?.id) return;
+          if (m.app !== 'castdesk' || !m.id || m.id === this.self?.id) return;
           this.#upsert({ id: m.id, name: m.name, platform: m.platform, port: m.port, addresses: [rinfo.address], via: 'beacon' });
         } catch {
           /* ignore junk */
@@ -76,7 +76,7 @@ export class Discovery extends EventEmitter {
         }
         if (!advertise) return;
         const send = () => {
-          const payload = Buffer.from(JSON.stringify({ app: 'paneo', v: PROTOCOL_VERSION, ...this.self }));
+          const payload = Buffer.from(JSON.stringify({ app: 'castdesk', v: PROTOCOL_VERSION, ...this.self }));
           const targets = new Set(['255.255.255.255', ...getLocalAddresses().map((a) => a.broadcast)]);
           for (const t of targets) sock.send(payload, BEACON_PORT, t, () => {});
         };

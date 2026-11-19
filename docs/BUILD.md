@@ -1,4 +1,4 @@
-# Building Paneo
+# Building CastDesk
 
 Requires Node.js 20+ (22 recommended). Run `npm install` once at the repository root.
 
@@ -15,22 +15,24 @@ npm run host:headless    # host service without a window
 
 ## Desktop installers
 
+Just want the Windows `.exe`? Follow [`BUILD-EXE.md`](BUILD-EXE.md).
+
 electron-builder builds for the OS it runs on. Run on the target OS (or use the GitHub workflow):
 
 ```bash
 npm run build:desktop            # build client, then installers for this OS
-npm run dist:win   -w @paneo/desktop   # nsis (x64, arm64), msi, portable
-npm run dist:mac   -w @paneo/desktop   # dmg + zip (universal)
-npm run dist:linux -w @paneo/desktop   # AppImage, deb, rpm
+npm run dist:win   -w @castdesk/desktop   # nsis (x64, arm64), msi, portable
+npm run dist:mac   -w @castdesk/desktop   # dmg + zip (universal)
+npm run dist:linux -w @castdesk/desktop   # AppImage, deb, rpm
 ```
 
 Output: `apps/desktop/release/`. File names:
 
 | Platform | Files |
 | --- | --- |
-| Windows | `Paneo-Setup-<v>-x64.exe`, `-arm64.exe`, `Paneo-<v>-x64.msi`, `Paneo-Portable-<v>.exe` |
-| macOS | `Paneo-<v>-universal.dmg`, `Paneo-<v>-mac-universal.zip` |
-| Linux | `Paneo-<v>-x86_64.AppImage`, `paneo_<v>_amd64.deb`, `paneo-<v>.x86_64.rpm` |
+| Windows | `CastDesk-Setup-<v>-x64.exe`, `-arm64.exe`, `CastDesk-<v>-x64.msi`, `CastDesk-Portable-<v>.exe` |
+| macOS | `CastDesk-<v>-universal.dmg`, `CastDesk-<v>-mac-universal.zip` |
+| Linux | `CastDesk-<v>-x86_64.AppImage`, `castdesk_<v>_amd64.deb`, `castdesk-<v>.x86_64.rpm` |
 
 Prerequisites: Linux `rpm` package for the rpm target; macOS universal builds need Xcode command-line tools; the msi target downloads WiX automatically.
 
@@ -49,7 +51,7 @@ cd apps/client/android
 ./gradlew assembleRelease        # unsigned; sign with apksigner (see workflow)
 ```
 
-The application id is `app.paneo.mobile`. If you edit `capacitor.config.json` or add plugins, run `npx cap sync android` again. The manifest, network security config and icons under `android/app/src/main` are hand-maintained and are kept by `cap sync`.
+The application id is `app.castdesk.mobile`. If you edit `capacitor.config.json` or add plugins, run `npx cap sync android` again. The manifest, network security config and icons under `android/app/src/main` are hand-maintained and are kept by `cap sync`.
 
 ## Website
 
@@ -72,6 +74,10 @@ node scripts/e2e-electron.mjs --dark --shots ./shots   # also save UI screenshot
 ```
 
 ## Troubleshooting
+
+**`Cannot find native binding` (rolldown)** — npm bug #4828 on a machine whose OS differs from the one that made the lockfile. Run `npm run fix-install`.
+
+**`ERR_FILE_NOT_FOUND ... dist/index.html`** — the UI was not built yet. `npm run dev:desktop` now builds it first.
 
 **`Error: Electron failed to install correctly`** — the one-time Electron download (done by npm's postinstall) was interrupted or skipped. `npm run dev:desktop` now repairs this automatically; you can also run `node node_modules/electron/install.js`. A flaky network, a proxy, antivirus software, or `npm install --ignore-scripts` are the usual causes.
 

@@ -5,9 +5,9 @@ import { NAV, SITE } from '../data/site.js';
 
 export function Brand({ size = 30 }) {
   return (
-    <Link to="/" className="brand" aria-label="Paneo home">
+    <Link to="/" className="brand" aria-label="CastDesk home">
       <img src="/favicon.svg" width={size} height={size} alt="" />
-      <span>Paneo</span>
+      <span>CastDesk</span>
     </Link>
   );
 }
@@ -95,7 +95,7 @@ export function Footer() {
         </div>
       </div>
       <div className="container footer-bottom">
-        <span>© {new Date().getFullYear()} Paneo contributors · MIT License</span>
+        <span>© {new Date().getFullYear()} CastDesk contributors · MIT License</span>
         <span>Works offline. Collects nothing. Made for the desk in front of you.</span>
       </div>
     </footer>
@@ -168,7 +168,7 @@ export function DeviceFrame({ kind = 'phone', src, alt, className = '' }) {
   return (
     <figure className={`frame frame-${kind} ${className}`}>
       {kind === 'desktop' && (
-        <div className="frame-bar"><i /><i /><i /><span>Paneo</span></div>
+        <div className="frame-bar"><i /><i /><i /><span>CastDesk</span></div>
       )}
       <img src={src} alt={alt} loading="lazy" />
     </figure>

@@ -34,8 +34,9 @@ host   → viewer auth-ok { proof }        # mutual proof
 ── session ─────────────────────────────────────────────────────────
 host   → viewer displays [ { id, x, y, w, h, primary, virtual, owner, name } ]
 host   → viewer perm [ 'view', 'control' ]
-viewer → host   subscribe { displays:[…], fps, maxWidth, quality }
-host   → viewer <binary JPEG frames>
+viewer → host   subscribe { display, maxFps, maxWidth, quality, codecs:['h264','vp8'] }
+host   → viewer <binary frames: 0x01 JPEG | 0x02 video key | 0x03 video delta>
+viewer → host   keyframe { display }     # decoder lost sync, send a key frame
 viewer → host   input { k: 'move'|'button'|'wheel'|'key'|'text'|'gesture'|'pen'|…, … }
 either          ping / pong
 either          bye

@@ -35,7 +35,7 @@ const bigToHex = (n) => n.toString(16).padStart(BYTES * 2, '0');
 export function pinToGenerator(pin, context = '') {
   const parts = [];
   for (let i = 0; i < 9; i++) {
-    parts.push(sha256(concat(utf8(`paneo-speke-v1|${context}|${pin}|`), Uint8Array.of(i))));
+    parts.push(sha256(concat(utf8(`castdesk-speke-v1|${context}|${pin}|`), Uint8Array.of(i))));
   }
   const h = bytesToBig(concat(...parts)) % P;
   const g = modPow(h, 2n, P); // squaring lands in the order-q subgroup
@@ -81,7 +81,7 @@ export class Speke {
     const shared = modPow(Y, this.x, P);
     const [cx, sy] = this.role === 'client' ? [this.X, Y] : [Y, this.X];
     this.key = sha256(
-      concat(utf8('paneo-session-v1|' + this.context + '|'), fromHex(bigToHex(cx)), fromHex(bigToHex(sy)), fromHex(bigToHex(shared))),
+      concat(utf8('castdesk-session-v1|' + this.context + '|'), fromHex(bigToHex(cx)), fromHex(bigToHex(sy)), fromHex(bigToHex(shared))),
     );
     return true;
   }

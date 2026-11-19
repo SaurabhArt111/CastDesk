@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { randomHex } from '@paneo/shared';
+import { randomHex } from '@castdesk/shared';
 
 /**
  * Persistent list of paired ("trusted") devices.

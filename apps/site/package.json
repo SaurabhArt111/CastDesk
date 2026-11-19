@@ -1,9 +1,9 @@
 {
-  "name": "@paneo/site",
+  "name": "@castdesk/site",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Paneo landing, download and guide site (React + Vite + plain CSS).",
+  "description": "CastDesk landing, download and guide site (React + Vite + plain CSS).",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build && node scripts/postbuild.mjs",

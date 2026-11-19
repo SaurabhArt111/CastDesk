@@ -7,9 +7,9 @@ import { bridge, isElectron, isNative, osName } from '../lib/platform.js';
 const TONE = { granted: 'ok', missing: 'warn', info: 'neutral', unknown: 'neutral' };
 const TEXT = { granted: 'Allowed', missing: 'Needs attention', info: 'Info', unknown: 'Not checked' };
 
-/** What Paneo needs on each platform, whether it has it, and a one-tap way to fix it. */
+/** What CastDesk needs on each platform, whether it has it, and a one-tap way to fix it. */
 export default function Permissions() {
-  const { setView, toast } = useApp();
+  const { toast } = useApp();
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
 
@@ -53,12 +53,11 @@ export default function Permissions() {
   return (
     <div className="page">
       <header className="topbar">
-        <button className="btn ghost" onClick={() => setView('home')}><Icon name="back" size={16} /> Back</button>
         <h1>Permissions</h1>
         <button className="btn ghost" onClick={refresh}><Icon name="refresh" size={16} /> Re-check</button>
       </header>
       <main className="page-body">
-        <p className="muted">Paneo asks only for what it needs, and says why. Nothing leaves your network.</p>
+        <p className="muted">CastDesk asks only for what it needs, and says why. Nothing leaves your network.</p>
         {items.map((it) => (
           <section className="card perm" key={it.id}>
             <div className="card-head">

@@ -2,7 +2,7 @@
 
 ## Threat model
 
-Paneo is for **trusted local networks and USB links**. It protects who may connect and who may control; it does not (yet) protect the confidentiality of an established session against someone who can see or alter your network traffic.
+CastDesk is for **trusted local networks and USB links**. It protects who may connect and who may control; it does not (yet) protect the confidentiality of an established session against someone who can see or alter your network traffic.
 
 ## What is protected
 

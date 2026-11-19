@@ -1,13 +1,13 @@
 {
-  "name": "@paneo/desktop",
-  "productName": "Paneo",
+  "name": "@castdesk/desktop",
+  "productName": "CastDesk",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Paneo desktop app for Windows, macOS and Linux.",
-  "author": "Paneo contributors",
+  "description": "CastDesk desktop app for Windows, macOS and Linux.",
+  "author": "CastDesk contributors",
   "license": "MIT",
-  "homepage": "https://paneo.app",
+  "homepage": "https://github.com/SaurabhArt111/Paneo",
   "main": "src/main.js",
   "scripts": {
     "dev": "node scripts/ensure-electron.mjs && electron .",
@@ -17,20 +17,21 @@
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "dist:linux": "electron-builder --linux",
-    "test": "node --test \"test/*.test.js\""
+    "test": "node --test \"test/*.test.js\"",
+    "dist:win:exe": "electron-builder --win nsis portable --x64"
   },
   "dependencies": {
-    "@paneo/host": "*",
-    "@paneo/shared": "*"
+    "@castdesk/host": "*",
+    "@castdesk/shared": "*"
   },
   "devDependencies": {
     "electron": "41.10.7",
     "electron-builder": "^26.0.0"
   },
   "build": {
-    "appId": "app.paneo.desktop",
-    "productName": "Paneo",
-    "copyright": "Copyright \u00a9 2026 Paneo contributors",
+    "appId": "app.castdesk.desktop",
+    "productName": "CastDesk",
+    "copyright": "Copyright \u00a9 2026 CastDesk contributors",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -50,7 +51,7 @@
       "**/node_modules/libnut*/**"
     ],
     "npmRebuild": false,
-    "artifactName": "Paneo-${version}-${os}-${arch}.${ext}",
+    "artifactName": "CastDesk-${version}-${os}-${arch}.${ext}",
     "win": {
       "target": [
         {
@@ -80,14 +81,14 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "include": "build/installer.nsh",
-      "artifactName": "Paneo-Setup-${version}-${arch}.${ext}",
-      "shortcutName": "Paneo"
+      "artifactName": "CastDesk-Setup-${version}-${arch}.${ext}",
+      "shortcutName": "CastDesk"
     },
     "portable": {
-      "artifactName": "Paneo-Portable-${version}.${ext}"
+      "artifactName": "CastDesk-Portable-${version}.${ext}"
     },
     "msi": {
-      "artifactName": "Paneo-${version}-${arch}.${ext}",
+      "artifactName": "CastDesk-${version}-${arch}.${ext}",
       "oneClick": false
     },
     "mac": {
@@ -112,15 +113,15 @@
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSLocalNetworkUsageDescription": "Paneo finds and connects to your other devices on the local network.",
+        "NSLocalNetworkUsageDescription": "CastDesk finds and connects to your other devices on the local network.",
         "NSBonjourServices": [
-          "_paneo._tcp"
+          "_castdesk._tcp"
         ],
-        "NSAppleEventsUsageDescription": "Paneo uses accessibility features to let your paired devices control this Mac."
+        "NSAppleEventsUsageDescription": "CastDesk uses accessibility features to let your paired devices control this Mac."
       }
     },
     "dmg": {
-      "artifactName": "Paneo-${version}-${arch}.${ext}"
+      "artifactName": "CastDesk-${version}-${arch}.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
@@ -133,12 +134,12 @@
       ],
       "desktop": {
         "entry": {
-          "Name": "Paneo",
+          "Name": "CastDesk",
           "Comment": "Mirror, extend and control screens",
           "Categories": "Utility;Network;RemoteAccess;"
         }
       },
-      "executableName": "paneo"
+      "executableName": "castdesk"
     },
     "deb": {
       "depends": [
@@ -146,18 +147,18 @@
         "libxtst6",
         "libxkbfile1"
       ],
-      "artifactName": "paneo_${version}_${arch}.${ext}"
+      "artifactName": "castdesk_${version}_${arch}.${ext}"
     },
     "rpm": {
-      "artifactName": "paneo-${version}.${arch}.${ext}"
+      "artifactName": "castdesk-${version}.${arch}.${ext}"
     },
     "appImage": {
-      "artifactName": "Paneo-${version}-${arch}.${ext}"
+      "artifactName": "CastDesk-${version}-${arch}.${ext}"
     },
     "electronVersion": "41.10.7"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/paneo/paneo.git"
+    "url": "https://github.com/SaurabhArt111/Paneo.git"
   }
 }

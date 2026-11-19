@@ -17,7 +17,7 @@ const args = Object.fromEntries(
 );
 
 const host = new HostService({
-  dataDir: path.resolve(args.data || path.join(os.homedir(), '.paneo')),
+  dataDir: path.resolve(args.data || path.join(os.homedir(), '.castdesk')),
   name: args.name === true ? undefined : args.name,
   port: args.port ? Number(args.port) : undefined,
   webRoot: args.web && args.web !== true ? path.resolve(args.web) : undefined,
@@ -30,7 +30,7 @@ host.on('client-left', (c) => console.log(`- ${c.device?.name} disconnected`));
 host.on('peers', (p) => console.log(`~ nearby: ${p.map((x) => `${x.name}@${x.addresses[0]}`).join(', ') || 'none'}`));
 
 const port = await host.start();
-console.log(`Paneo host "${host.name}" listening on port ${port}`);
+console.log(`CastDesk host "${host.name}" listening on port ${port}`);
 for (const a of getLocalAddresses()) console.log(`  ${a.usb ? 'USB ' : 'LAN '} ${a.address}:${port}  (${a.iface})`);
 console.log(`  input injection: ${host.input.available ? 'ready' : 'unavailable'}`);
 

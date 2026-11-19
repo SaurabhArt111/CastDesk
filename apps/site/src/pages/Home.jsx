@@ -10,13 +10,13 @@ const FEATURES = [
   { icon: 'pen', title: 'Pen tablet mode', text: 'Turn a tablet into a graphics pad. The whole surface maps to the screen, with pressure, tilt and eraser data sent along.' },
   { icon: 'keyboard', title: 'Full on-screen keyboard', text: 'Sticky Ctrl, Alt, Shift and Win/Cmd for real shortcuts, plus a text box that uses your phone’s own keyboard, voice typing and emoji.' },
   { icon: 'lock', title: 'PIN once, then automatic', text: 'Pair with a one-time 6-digit PIN or QR code. After that devices recognise each other and reconnect by themselves, with no PIN.' },
-  { icon: 'layout', title: 'Arrange displays like Windows', text: 'Drag screens into place and they snap edge to edge. Paneo remembers the position of each device for next time.' },
+  { icon: 'layout', title: 'Arrange displays like Windows', text: 'Drag screens into place and they snap edge to edge. CastDesk remembers the position of each device for next time.' },
   { icon: 'power', title: 'Starts with your computer', text: 'Lives quietly in the tray after login so your devices connect the moment you sit down. One switch to turn it off.' },
 ];
 
 const STEPS = [
-  { n: 1, title: 'Install on your computer', text: 'Download Paneo for Windows, macOS or Linux. The installer opens the firewall for your private network.' },
-  { n: 2, title: 'Pair with a PIN — once', text: 'Open Paneo on your phone, tablet or second PC. Pick your computer, type the 6-digit PIN (or scan the QR code).' },
+  { n: 1, title: 'Install on your computer', text: 'Download CastDesk for Windows, macOS or Linux. The installer opens the firewall for your private network.' },
+  { n: 2, title: 'Pair with a PIN — once', text: 'Open CastDesk on your phone, tablet or second PC. Pick your computer, type the 6-digit PIN (or scan the QR code).' },
   { n: 3, title: 'It just connects', text: 'Next time the devices see each other — on the cable or the network — they connect on their own and put the screen right where you left it.' },
 ];
 
@@ -55,8 +55,8 @@ function Hero() {
           </ul>
         </div>
         <div className="hero-art" aria-hidden="false">
-          <DeviceFrame kind="desktop" src="/screens/desktop-home.webp" alt="Paneo on a PC: one-time PIN, QR code, nearby devices and paired computers" className="hero-desktop" />
-          <DeviceFrame kind="phone" src="/screens/mobile-trackpad.webp" alt="Paneo on a phone in trackpad mode controlling a PC" className="hero-phone" />
+          <DeviceFrame kind="desktop" src="/screens/desktop-home.webp" alt="CastDesk on a PC: one-time PIN, QR code, nearby devices and paired computers" className="hero-desktop" />
+          <DeviceFrame kind="phone" src="/screens/mobile-trackpad.webp" alt="CastDesk on a phone in trackpad mode controlling a PC" className="hero-phone" />
         </div>
       </div>
     </section>
@@ -80,11 +80,11 @@ function ConnectionDiagram() {
   return (
     <svg className="diagram" viewBox="0 0 760 250" role="img" aria-label="Your devices connect to each other directly over USB or the local network. Nothing goes to the internet.">
       <defs>
-        <linearGradient id="dg" x1="0" x2="1"><stop offset="0" stopColor="#6366f1" /><stop offset="1" stopColor="#22d3ee" /></linearGradient>
+        <linearGradient id="dg" x1="0" x2="1"><stop offset="0" stopColor="#c7f23b" /><stop offset="1" stopColor="#62c686" /></linearGradient>
       </defs>
       <rect x="20" y="70" width="170" height="110" rx="16" className="d-box" />
       <text x="105" y="118" textAnchor="middle" className="d-title">Your PC</text>
-      <text x="105" y="142" textAnchor="middle" className="d-sub">Paneo host</text>
+      <text x="105" y="142" textAnchor="middle" className="d-sub">CastDesk host</text>
       <rect x="570" y="20" width="170" height="64" rx="14" className="d-box" />
       <text x="655" y="58" textAnchor="middle" className="d-title">Phone / tablet</text>
       <rect x="570" y="93" width="170" height="64" rx="14" className="d-box" />
@@ -197,7 +197,7 @@ export default function Home() {
           </div>
           <div className="grid grid-2">
             <DeviceFrame kind="desktop" src="/screens/desktop-layout.webp" alt="Drag-and-drop display layout with snapping, including an extended iPad" />
-            <DeviceFrame kind="desktop" src="/screens/desktop-permissions.webp" alt="Permissions screen showing what Paneo needs and a one-click fix" />
+            <DeviceFrame kind="desktop" src="/screens/desktop-permissions.webp" alt="Permissions screen showing what CastDesk needs and a one-click fix" />
           </div>
           <p className="center"><Link to="/gallery" className="btn btn-ghost">See all screenshots <Icon name="arrow" size={16} /></Link></p>
         </div>
@@ -243,7 +243,7 @@ export default function Home() {
           <h2>Put your other screens to work.</h2>
           <p>Free, open source, and private by design.</p>
           <div className="cta-row center">
-            <Link to="/download" className="btn btn-light btn-lg"><Icon name="download" size={18} /> Download Paneo</Link>
+            <Link to="/download" className="btn btn-light btn-lg"><Icon name="download" size={18} /> Download CastDesk</Link>
             <Link to="/guide" className="btn btn-outline btn-lg">Read the guide</Link>
           </div>
         </div>

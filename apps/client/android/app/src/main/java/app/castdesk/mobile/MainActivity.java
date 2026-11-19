@@ -1,4 +1,4 @@
-package app.paneo.mobile;
+package app.castdesk.mobile;
 
 import com.getcapacitor.BridgeActivity;
 

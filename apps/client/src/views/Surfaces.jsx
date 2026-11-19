@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { TrackpadEngine } from '@paneo/shared';
+import { TrackpadEngine } from '@castdesk/shared';
 import { vibrate } from '../lib/format.js';
 import Icon from '../components/Icon.jsx';
 

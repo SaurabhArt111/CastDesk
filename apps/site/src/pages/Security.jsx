@@ -4,7 +4,7 @@ export default function Security() {
   return (
     <>
       <PageHero eyebrow="Trust" title="Security &amp; privacy">
-        What Paneo protects, how, and — just as important — what it does not protect yet.
+        What CastDesk protects, how, and — just as important — what it does not protect yet.
       </PageHero>
       <div className="container page-body narrow">
         <h2>Privacy</h2>
@@ -29,7 +29,7 @@ export default function Security() {
 
         <h2>What is not protected yet</h2>
         <Callout tone="warn" title="Version 1.0 does not encrypt the screen stream or input">
-          Pairing and reconnect are authenticated, but after that the video frames and control messages travel as ordinary unencrypted WebSocket data. Someone who can observe your network traffic could watch the screen or read keystrokes, and someone on a hostile network could in principle hijack an existing session. Use Paneo on networks you trust (your home, a private office network) or over a USB cable. Do not expose port 7420 to the internet.
+          Pairing and reconnect are authenticated, but after that the video frames and control messages travel as ordinary unencrypted WebSocket data. Someone who can observe your network traffic could watch the screen or read keystrokes, and someone on a hostile network could in principle hijack an existing session. Use CastDesk on networks you trust (your home, a private office network) or over a USB cable. Do not expose port 7420 to the internet.
         </Callout>
         <p>Encrypting the session with the key already established during pairing is the highest-priority item on the roadmap.</p>
 

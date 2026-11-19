@@ -59,13 +59,13 @@ for (let i = 0; i < 40 && !desktop; i++) {
 if (!desktop) { console.error('Could not attach to Electron'); process.exit(1); }
 let appPage;
 for (let i = 0; i < 40 && !appPage; i++) {
-  appPage = (await desktop.pages()).find((p) => p.url().startsWith('file://'));
+  appPage = (await desktop.pages()).find((p) => p.url().startsWith('file://') && !p.url().includes('capture=1'));
   if (!appPage) await sleep(300);
 }
-await appPage.waitForFunction(() => window.paneo?.getState, { timeout: 15000 });
+await appPage.waitForFunction(() => window.castdesk?.getState, { timeout: 15000 });
 if (dark) await appPage.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
-const state = () => appPage.evaluate(() => window.paneo.getState());
-await appPage.evaluate(() => window.paneo.setSettings({ requireApprovalForControl: false }));
+const state = () => appPage.evaluate(() => window.castdesk.getState());
+await appPage.evaluate(() => window.castdesk.setSettings({ requireApprovalForControl: false }));
 let st = await state();
 check('Electron host service is running', st.info.port > 0, `port ${st.info.port}`);
 check('PIN is 6 digits', /^\d{6}$/.test(st.pin.pin));
@@ -81,6 +81,16 @@ await phone.setViewport({ width: 412, height: 860, deviceScaleFactor: 2, isMobil
 if (dark) await phone.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
 phone.on('pageerror', (e) => console.log('PAGE ERROR', e.message));
 phone.on('console', (m) => ['error', 'warning'].includes(m.type()) && console.log('PHONE', m.type(), m.text().slice(0, 200)));
+await phone.evaluateOnNewDocument(() => {
+  window.__draws = 0;
+  window.__ft = { 1: 0, 2: 0, 3: 0, bytes: 0 };
+  const origAdd = WebSocket.prototype.addEventListener;
+  const hook = (ws) => ws.addEventListener('message', (e) => { if (e.data instanceof ArrayBuffer && e.data.byteLength > 10) { const t = new Uint8Array(e.data, 0, 1)[0]; window.__ft[t] = (window.__ft[t] || 0) + 1; window.__ft.bytes += e.data.byteLength; } });
+  const NativeWS = window.WebSocket;
+  window.WebSocket = new Proxy(NativeWS, { construct(T, a) { const ws = new T(...a); hook(ws); return ws; } });
+  const orig = CanvasRenderingContext2D.prototype.drawImage;
+  CanvasRenderingContext2D.prototype.drawImage = function (...a) { if (this.canvas.classList?.contains('remote')) window.__draws++; return orig.apply(this, a); };
+});
 const url = `http://127.0.0.1:${st.info.port}/`;
 await phone.goto(url, { waitUntil: 'networkidle2' });
 await phone.waitForSelector('.device', { timeout: 15000 });
@@ -110,8 +120,9 @@ await phone.click('.pin-hidden');
 await phone.keyboard.down('Control'); await phone.keyboard.press('KeyA'); await phone.keyboard.up('Control');
 await phone.keyboard.press('Backspace');
 await phone.type('.pin-hidden', st.pin.pin);
-await must(phone, '.session');
-check('Correct PIN pairs and opens the session', true);
+await must(phone, '.session.purpose-mirror');
+check('Correct PIN pairs and opens the session (Mirror is the default purpose)', true);
+check('Mirror shows only the screen: no trackpad or keyboard mixed in', !(await phone.$('.surface-trackpad')) && !(await phone.$('.kbd')));
 
 // 4. real screen frames arrive
 await phone.waitForFunction(() => {
@@ -127,9 +138,31 @@ st = await state();
 check('Host lists the phone as a trusted device', st.trusted.length === 1 && st.clients.length === 1);
 check('Capture is demand-driven (streaming now)', st.clients[0].subscriptions.length === 1);
 await sleep(800);
-if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-trackpad.webp'), type: 'webp', quality: 90 });
+if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-mirror.webp'), type: 'webp', quality: 90 });
+st = await state();
+const codecs = st.capture?.video || [];
+console.log(`INFO  host can encode: ${codecs.join(', ') || 'JPEG only'}`);
+const d0 = await phone.evaluate(() => window.__draws);
+await sleep(3000);
+const fps = Math.round(((await phone.evaluate(() => window.__draws)) - d0) / 3);
+const ft = await phone.evaluate(() => window.__ft);
+check('Phone receives encoded video (WebCodecs), not just JPEG', codecs.length === 0 || (ft[2] > 0 && ft[3] > 0), `key ${ft[2]}, delta ${ft[3]}, jpeg ${ft[1]}, ${(ft.bytes / 1024).toFixed(0)} KB total`);
+check('Mirror stream keeps a usable frame rate on a static desktop', fps >= 1, `${fps} painted fps (static screen, loopback)`);
 
-// 5. real input: trackpad mode (default on touch), drag a finger -> the real X cursor moves
+// 5. switch purpose in the session: Trackpad is a full-screen pad, no video at all
+const hudSwitch = async (title) => {
+  if (!(await phone.$('.sheet'))) await phone.click('.hud-chip');
+  await phone.waitForSelector('.sheet-row');
+  await clickText(phone, '.sheet-row', title);
+  await sleep(500);
+};
+await hudSwitch('Trackpad');
+await must(phone, '.session.purpose-trackpad .surface-trackpad');
+check('Trackpad purpose: full-screen pad, no picture on the device', !(await phone.$('canvas.remote')) && !(await phone.$('.stage-box')));
+await sleep(400);
+st = await state();
+check('Trackpad purpose stops the screen stream (nothing captured)', st.clients[0].subscriptions.length === 0);
+if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-trackpad.webp'), type: 'webp', quality: 90 });
 const cursor = () => execFileSync('node', ['--input-type=module', '-e', "const m=await import('@nut-tree-fork/nut-js');const {mouse}=m.default||m;const p=await mouse.getPosition();console.log(p.x+','+p.y)"], { cwd: root, env: { ...process.env, DISPLAY } }).toString().trim().split(',').map(Number);
 const before = cursor();
 const pad = await phone.$('.surface-trackpad');
@@ -142,18 +175,21 @@ await sleep(400);
 const after = cursor();
 check('Trackpad drag moves the real cursor on the host', after[0] > before[0] + 20 && after[1] > before[1], `${before} -> ${after}`);
 
-// 6. keyboard mode renders + sends text (smoke) and screenshots
-await clickText(phone, '.mode-switch button', 'Keys');
-await phone.waitForSelector('.kbd');
-check('On-screen keyboard opens', true);
-await sleep(500);
+// 6. keyboard and pen are their own full-screen purposes too
+await hudSwitch('Keyboard');
+await must(phone, '.session.purpose-keyboard .kbd');
+check('Keyboard purpose: full-screen keyboard only', !(await phone.$('canvas.remote')) && !(await phone.$('.surface-trackpad')));
 if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-keyboard.webp'), type: 'webp', quality: 90 });
-await clickText(phone, '.mode-switch button', 'Pen');
-await sleep(500);
+await hudSwitch('Pen pad');
+await must(phone, '.session.purpose-pen .surface-pen');
+check('Pen purpose: blank pad by default (no screen preview)', !(await phone.$('canvas.remote')));
 if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-pen.webp'), type: 'webp', quality: 90 });
+await hudSwitch('Mirror screen');
+await must(phone, '.session.purpose-mirror canvas.remote');
+check('Switching back to Mirror resumes the picture', true);
 
 // 7. disconnect and reconnect with NO PIN (trusted)
-await phone.click('.session-bar .icon-btn');
+await phone.click('.hud-btn[aria-label="Disconnect"]');
 await phone.waitForSelector('.device', { timeout: 10000 });
 await sleep(300);
 await clickText(phone, 'button.btn', 'Connect');
@@ -164,18 +200,15 @@ st = await state();
 check('PIN rotated after pairing (single-use)', st.pin.pin !== null && st.trusted.length === 1);
 
 // 8. revoke from the host -> phone is kicked and must re-pair
-await appPage.evaluate((id) => window.paneo.revoke(id), st.trusted[0].id);
+await appPage.evaluate((id) => window.castdesk.revoke(id), st.trusted[0].id);
 await phone.waitForSelector('.device', { timeout: 10000 });
 await sleep(500);
 await clickText(phone, 'button.btn', 'Connect'); // phone still holds the old secret; host no longer trusts it
 check('After removal the host demands the PIN again', await phone.waitForSelector('.pin-hidden', { timeout: 5000 }).then(() => true).catch(() => false));
 
 // 9. host-side screens (real renderer)
-for (const [view, name] of [['layout', 'desktop-layout'], ['permissions', 'desktop-permissions'], ['settings', 'desktop-settings']]) {
-  await appPage.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Back/.test(x.textContent)); b?.click(); });
-  await sleep(250);
-  const label = { layout: 'Display layout', permissions: 'Permissions', settings: 'Settings' }[view];
-  await appPage.evaluate((l) => [...document.querySelectorAll('button')].find((x) => x.textContent.includes(l))?.click(), label);
+for (const [label, name] of [['Displays', 'desktop-layout'], ['Permissions', 'desktop-permissions'], ['Settings', 'desktop-settings'], ['Home', 'desktop-home']]) {
+  await appPage.evaluate((l) => [...document.querySelectorAll('.side .nav-item')].find((x) => x.textContent.includes(l))?.click(), label);
   await sleep(900);
   if (shotsDir) await appPage.screenshot({ path: path.join(shotsDir, `${name}.webp`), type: 'webp', quality: 90 });
 }

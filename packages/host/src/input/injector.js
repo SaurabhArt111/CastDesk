@@ -1,4 +1,4 @@
-import { toDesktopPoint, desktopBounds } from '@paneo/shared';
+import { toDesktopPoint, desktopBounds } from '@castdesk/shared';
 import { domCodeToKeyName } from './keymap.js';
 
 const NOTCH = 40; // wheel "pixels" per scroll notch

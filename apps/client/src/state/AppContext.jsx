@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Capacitor } from '@capacitor/core';
 import { HostConnection, ConnectError } from '../lib/connection.js';
 import { startDiscovery, parseConnectLink } from '../lib/discovery.js';
-import { Capturer } from '../lib/capturer.js';
 import { applySystemBars } from '../lib/systembars.js';
 import { getIdentity, saveIdentity, loadPrefs, savePrefs, loadHosts, saveHosts } from '../lib/storage.js';
 import { bridge, isElectron, isNative } from '../lib/platform.js';
@@ -18,7 +17,6 @@ export function AppProvider({ children }) {
   const [hosts, setHostsState] = useState(loadHosts);
   const [peers, setPeers] = useState([]);
   const [hostState, setHostState] = useState(null); // desktop only: state of the local host service
-  const [capture, setCapture] = useState({ connected: false, capturing: [] });
   const [session, setSession] = useState(null);
   const [pinRequest, setPinRequest] = useState(null);
   const [toasts, setToasts] = useState([]);
@@ -95,16 +93,7 @@ export function AppProvider({ children }) {
     return bridge.onState(setHostState);
   }, []);
 
-  const captureRef = useRef(null);
-  const hostPort = hostState?.info?.port;
-  const hostToken = hostState?.info?.sourceToken;
-  useEffect(() => {
-    if (!isElectron || !hostPort || !hostToken) return undefined;
-    const c = new Capturer({ port: hostPort, token: hostToken, onStatus: (s) => setCapture((p) => ({ ...p, ...s })) });
-    captureRef.current = c;
-    c.start();
-    return () => c.stop();
-  }, [hostPort, hostToken]);
+  const capture = hostState?.capture || { connected: false, capturing: [], video: [] };
 
   /* ---------------------------------- connect ---------------------------------- */
   const disconnect = useCallback(() => {
@@ -194,7 +183,7 @@ export function AppProvider({ children }) {
     }
   }, [peers, hosts, prefs.autoConnectTrusted, session, pinRequest, connectToPeer]);
 
-  /* ------------------ deep links: paneo://connect?... (QR, USB launch) ------------------ */
+  /* ------------------ deep links: castdesk://connect?... (QR, USB launch) ------------------ */
   useEffect(() => {
     if (!isNative) return undefined;
     let handle;

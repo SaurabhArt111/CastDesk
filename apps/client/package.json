@@ -1,9 +1,9 @@
 {
-  "name": "@paneo/client",
+  "name": "@castdesk/client",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Paneo app UI. One React codebase shipped as the desktop renderer (Electron), the Android/iOS app (Capacitor) and a browser PWA served by the host.",
+  "description": "CastDesk app UI. One React codebase shipped as the desktop renderer (Electron), the Android/iOS app (Capacitor) and a browser PWA served by the host.",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
@@ -19,7 +19,7 @@
     "@capacitor/core": "^8.6.2",
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/status-bar": "^8.0.4",
-    "@paneo/shared": "*",
+    "@castdesk/shared": "*",
     "capacitor-zeroconf": "^4.0.0",
     "qrcode": "^1.5.4",
     "react": "^19.0.0",

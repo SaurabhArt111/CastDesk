@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { useApp } from '../state/AppContext.jsx';
 import Icon, { DeviceIcon } from '../components/Icon.jsx';
-import { Badge, EmptyState, Logo, Switch, Modal, PinInput } from '../components/common.jsx';
+import PurposePicker from '../components/PurposePicker.jsx';
+import { Badge, EmptyState, Switch, Modal, PinInput } from '../components/common.jsx';
 import { canHost, bridge, platformLabel, isNative, isElectron } from '../lib/platform.js';
 import { fmtCountdown, timeAgo, copyText } from '../lib/format.js';
 import { buildConnectLink, parseConnectLink, scanQr } from '../lib/discovery.js';
@@ -11,7 +12,7 @@ import { buildConnectLink, parseConnectLink, scanQr } from '../lib/discovery.js'
 function Qr({ text, size = 156 }) {
   const ref = useRef(null);
   useEffect(() => {
-    if (ref.current && text) QRCode.toCanvas(ref.current, text, { width: size, margin: 1, color: { dark: '#0b1020', light: '#ffffff' } }).catch(() => {});
+    if (ref.current && text) QRCode.toCanvas(ref.current, text, { width: size, margin: 1, color: { dark: '#12363a', light: '#ffffff' } }).catch(() => {});
   }, [text, size]);
   return <canvas ref={ref} className="qr" width={size} height={size} aria-label="QR code to connect" />;
 }
@@ -58,21 +59,32 @@ function CopyButton({ text, label = 'Copy', done = 'Copied' }) {
 const PIN_TTL = 5 * 60 * 1000;
 
 /* ------------------------- host: pair a new device ------------------------- */
-function PairCard() {
-  const { hostState: hs, toast } = useApp();
+function PinTimer({ expiresAt, attemptsLeft }) {
   const [now, setNow] = useState(Date.now());
-  const [busy, setBusy] = useState(false);
   useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 500);
+    const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  if (!hs) return <section className="card hero-card"><p className="muted">Starting…</p></section>;
+  const left = Math.max(0, expiresAt - now);
+  const pct = Math.min(100, (left / PIN_TTL) * 100);
+  return (
+    <>
+      <div className="pin-timer" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
+        <i style={{ width: `${pct}%` }} className={pct < 20 ? 'low' : ''} />
+      </div>
+      <span className="pin-meta">Expires in {fmtCountdown(left)} · {attemptsLeft} tries left</span>
+    </>
+  );
+}
+
+function PairCard() {
+  const { hostState: hs, toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  if (!hs) return <section className="hero"><p>Starting…</p></section>;
 
   const { info, pin, settings } = hs;
   const addrs = info.addresses || [];
   const digits = (pin.pin || '').padEnd(6, '·').split('');
-  const left = Math.max(0, pin.expiresAt - now);
-  const pct = Math.min(100, (left / PIN_TTL) * 100);
   const qrText = buildConnectLink({ addresses: addrs.map((a) => a.address), port: info.port, pin: pin.pin, id: info.id, name: info.name });
   const accepting = settings.allowIncoming;
   const newPin = async () => {
@@ -86,13 +98,15 @@ function PairCard() {
   };
 
   return (
-    <section className="card hero-card">
-      <div className="card-head">
+    <section className="hero">
+      <span className="hero-deco d1" aria-hidden="true" />
+      <span className="hero-deco d2" aria-hidden="true" />
+      <div className="hero-head">
         <div>
-          <span className="eyebrow">Pair a device</span>
-          <h2 className="hero-title">Enter this PIN on your other device</h2>
+          <span className="hero-eyebrow">Pair a device</span>
+          <h2>Enter this PIN on your other device</h2>
         </div>
-        <Badge tone={accepting ? 'ok' : 'warn'} icon={accepting ? 'check' : 'lock'}>{accepting ? 'Ready' : 'Not accepting'}</Badge>
+        <span className={`hero-badge ${accepting ? '' : 'off'}`}>{accepting ? 'Ready' : 'Not accepting'}</span>
       </div>
 
       <div className="pair-body">
@@ -100,43 +114,34 @@ function PairCard() {
           <div className="pin-tiles" aria-live="polite" aria-label={`PIN ${pin.pin}`}>
             {digits.map((d, i) => <span key={i} className="pin-tile">{d}</span>)}
           </div>
-          <div className="pin-timer" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}>
-            <i style={{ width: `${pct}%` }} className={pct < 20 ? 'low' : ''} />
-          </div>
-          <div className="pin-meta">
-            <span className="muted small">Expires in {fmtCountdown(left)} · {pin.attemptsLeft} tries left</span>
-          </div>
+          <PinTimer expiresAt={pin.expiresAt} attemptsLeft={pin.attemptsLeft} />
           <div className="pin-actions">
-            <button className="btn primary small" onClick={newPin} disabled={busy}>
+            <button className="btn lime small" onClick={newPin} disabled={busy}>
               <Icon name="refresh" size={15} className={busy ? 'spin' : ''} /> New PIN
             </button>
             <CopyButton text={pin.pin} label="Copy PIN" />
           </div>
         </div>
         <div className="qr-wrap">
-          <Qr text={qrText} size={148} />
-          <span className="muted small">Or scan with Paneo on a phone</span>
+          <Qr text={qrText} size={132} />
+          <span className="small">Scan from a phone</span>
         </div>
       </div>
 
-      <p className="muted small hero-note">You only do this once per device. After that it reconnects by itself — no PIN.</p>
+      <p className="hero-note">Only once per device. After that it reconnects by itself, with no PIN.</p>
 
       <div className="addr-list">
-        <span className="eyebrow">Open in any browser (iPhone, iPad, other computers)</span>
         {addrs.map((a) => {
           const url = `http://${a.address}:${info.port}`;
           return (
             <div className="addr-row" key={a.address}>
               {a.usb ? <Badge tone="accent" icon="usb">USB</Badge> : <Badge icon="wifi">LAN</Badge>}
               <code>{url}</code>
-              <small className="muted">{a.iface}</small>
               <CopyButton text={url} />
             </div>
           );
         })}
-        {!addrs.length && (
-          <p className="muted small">No network found yet. Join Wi-Fi or Ethernet, or plug in a phone with USB tethering. No internet is needed.</p>
-        )}
+        {!addrs.length && <p className="hero-note">No network found yet. Join Wi-Fi or Ethernet, or plug in a phone. No internet is needed.</p>}
       </div>
     </section>
   );
@@ -182,10 +187,15 @@ function SwitchRows() {
 
 /* --------------------- host: devices on this computer --------------------- */
 function UsbSection() {
-  const { hostState: hs, refreshDiscovery } = useApp();
+  const { hostState: hs, refreshDiscovery, toast } = useApp();
   const adb = hs?.adb;
   if (!adb) return null;
   const list = adb.list || [];
+  const installing = adb.install?.state === 'downloading';
+  const install = async () => {
+    const r = await bridge.installAdb();
+    if (r?.ok) toast('USB tool installed', 'ok');
+  };
   return (
     <div className="section">
       <h3 className="section-title"><Icon name="usb" size={16} /> USB cable</h3>
@@ -193,27 +203,39 @@ function UsbSection() {
         <div className="notice warn">
           <Icon name="warn" size={18} />
           <div>
-            <strong>Android USB tool (adb) not found</strong>
-            <p>Phones can still connect over <b>USB tethering</b> (Settings → Hotspot &amp; tethering → USB tethering). For the automatic cable link, install Android platform-tools and make sure <code>adb</code> is on your PATH.</p>
+            <strong>USB tool not installed</strong>
+            <p>The cable link uses Google&apos;s small <b>adb</b> tool. CastDesk can fetch it for you (one-time, about 7 MB, needs internet only for this step).</p>
+            {adb.install?.state === 'error' && <p className="err">{adb.install.error}</p>}
+            {adb.error && adb.install?.state !== 'error' && <p className="muted small">{adb.error}</p>}
             <div className="notice-actions">
-              <button className="btn small" onClick={() => bridge.openExternal('https://developer.android.com/tools/releases/platform-tools')}><Icon name="download" size={14} /> Get platform-tools</button>
+              <button className="btn primary small" onClick={install} disabled={installing}>
+                <Icon name="download" size={14} /> {installing ? `Downloading… ${adb.install.pct}%` : 'Install USB tool'}
+              </button>
               <RefreshButton onRefresh={refreshDiscovery} label="Check again" />
             </div>
+            <p className="muted small">No internet? USB <b>tethering</b> works without adb: on the phone, Settings → Hotspot &amp; tethering → USB tethering.</p>
           </div>
         </div>
       )}
       {adb.available && !list.length && (
-        <p className="muted small hint-line">No phone detected on USB. Plug it in, then turn on <b>USB debugging</b> (Settings → Developer options).</p>
+        <ol className="usb-steps">
+          <li>Plug the phone in with a <b>data</b> cable (some cables only charge).</li>
+          <li>On the phone: Settings → About → tap <b>Build number</b> 7 times.</li>
+          <li>Settings → Developer options → turn on <b>USB debugging</b>.</li>
+          <li>Tap <b>Allow</b> on the phone&apos;s “Allow USB debugging?” prompt.</li>
+          <li><RefreshButton onRefresh={refreshDiscovery} label="Check again" /></li>
+        </ol>
       )}
+      {adb.available && adb.error && <p className="muted small">{adb.error}</p>}
       {list.map((d) => (
         <div key={d.serial} className="device">
           <span className="device-icon"><DeviceIcon platform="android" /></span>
           <span className="device-main">
             <strong>{d.model || d.serial}</strong>
             <small>
-              {d.linked ? 'Linked through the cable — open Paneo on the phone'
-                : d.state === 'unauthorized' ? 'Waiting for you to tap “Allow USB debugging” on the phone'
-                : d.state === 'offline' ? 'Offline — unplug and plug the cable again'
+              {d.linked ? 'Linked through the cable. Open CastDesk on the phone.'
+                : d.state === 'unauthorized' ? 'Tap “Allow USB debugging” on the phone'
+                : d.state === 'offline' ? 'Offline. Unplug and plug the cable again'
                 : `State: ${d.state}`}
             </small>
           </span>
@@ -280,7 +302,7 @@ function HostDevices() {
       <div className="card-head">
         <div>
           <h2>Devices</h2>
-          <p className="muted small">Phones and tablets find this computer by themselves — just open Paneo on them.</p>
+          <p className="muted small">Phones and tablets find this computer by themselves — just open CastDesk on them.</p>
         </div>
         <RefreshButton onRefresh={refreshDiscovery} label="Refresh" />
       </div>
@@ -307,7 +329,7 @@ function Nearby({ title }) {
       </div>
       {!peers.length && !offline.length && (
         <EmptyState icon="wifi" title="No computers found yet">
-          Open Paneo on the computer you want to use, on the same network — or plug it in with a USB cable. No internet needed. Tap Refresh to look again.
+          Open CastDesk on the computer you want to use, on the same network — or plug it in with a USB cable. No internet needed. Tap Refresh to look again.
         </EmptyState>
       )}
       <ul className="device-list">
@@ -357,7 +379,7 @@ function ManualConnect() {
     try {
       const text = await scanQr();
       const link = text && parseConnectLink(text);
-      if (!link) return toast('That QR code is not a Paneo code', 'error');
+      if (!link) return toast('That QR code is not a CastDesk code', 'error');
       connect({ addresses: link.addresses, port: link.port, hostId: link.hostId, name: link.name }, { pin: link.pin });
     } catch (e) {
       toast(e.message || 'Could not scan', 'error');
@@ -432,18 +454,25 @@ export function PinDialog() {
 }
 
 /* ---------------------------------- Home ---------------------------------- */
+function PurposeSection() {
+  const { prefs, setPrefs } = useApp();
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2>What do you want to do?</h2>
+          <p className="muted small">Pick one. It applies the next time you connect, and you can switch inside a session.</p>
+        </div>
+      </div>
+      <PurposePicker value={prefs.purpose} onChange={(v) => setPrefs({ purpose: v })} />
+    </section>
+  );
+}
+
 export default function Home() {
-  const { setView, session, hostState } = useApp();
+  const { session } = useApp();
   return (
     <div className="home">
-      <header className="topbar">
-        <Logo />
-        <nav>
-          {canHost && <button className="btn ghost" onClick={() => setView('layout')}><Icon name="layout" size={16} /> <span className="nav-label">Display layout</span></button>}
-          <button className="btn ghost" onClick={() => setView('permissions')}><Icon name="shield" size={16} /> <span className="nav-label">Permissions</span></button>
-          <button className="btn ghost" onClick={() => setView('settings')}><Icon name="settings" size={16} /> <span className="nav-label">Settings</span></button>
-        </nav>
-      </header>
       {session?.status === 'connecting' && <div className="banner">Connecting…</div>}
       {canHost ? (
         <main className="home-grid host">
@@ -453,14 +482,16 @@ export default function Home() {
             <SwitchRows />
           </div>
           <div className="stack">
+            <PurposeSection />
             <HostDevices />
-            <Nearby title="Use another computer's screen" />
+            <Nearby title="Use another computer" />
             <PairedHosts />
           </div>
         </main>
       ) : (
         <main className="home-grid viewer">
           <div className="stack">
+            <PurposeSection />
             <Nearby title="Computers" />
             <PairedHosts />
           </div>

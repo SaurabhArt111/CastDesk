@@ -6,13 +6,9 @@ import { DirectSurface, TrackpadSurface, PenSurface } from './Surfaces.jsx';
 import KeyboardPanel from './KeyboardPanel.jsx';
 import ArrangementEditor from './ArrangementEditor.jsx';
 import { isElectron, bridge } from '../lib/platform.js';
+import { FrameSink, detectDecoders } from '../lib/decoder.js';
+import { PURPOSES, purposeById } from '../lib/purposes.js';
 
-const MODES = [
-  { value: 'direct', icon: 'touch', label: 'Touch' },
-  { value: 'trackpad', icon: 'trackpad', label: 'Trackpad' },
-  { value: 'pen', icon: 'pen', label: 'Pen' },
-  { value: 'keyboard', icon: 'keyboard', label: 'Keys' },
-];
 const QUALITY = [
   { value: 'low', label: 'Fast', maxFps: 30, maxWidth: 1280, quality: 0.5 },
   { value: 'balanced', label: 'Balanced', maxFps: 30, maxWidth: 1920, quality: 0.7 },
@@ -25,100 +21,116 @@ function fit(cw, ch, w, h, mode) {
   return { w: Math.floor(w * s), h: Math.floor(h * s) };
 }
 
+/** The remote screen as a picture. Mounted only for purposes that need video. */
+function Screen({ conn, displayId, prefs, touch, penDim, onStats, children }) {
+  const canvasRef = useRef(null);
+  const boxRef = useRef(null);
+  const [size, setSize] = useState({ w: 16, h: 9 });
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  const [decoders, setDecoders] = useState(null);
+
+  useEffect(() => {
+    let live = true;
+    detectDecoders().then((d) => live && setDecoders(d));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // subscribe once we know which codecs this device can decode
+  useEffect(() => {
+    if (displayId == null || decoders == null) return undefined;
+    conn.subscribe(displayId, { maxFps: prefs.maxFps, maxWidth: prefs.maxWidth, quality: prefs.quality, codecs: decoders });
+    return () => conn.unsubscribe(displayId);
+  }, [conn, displayId, decoders, prefs.maxFps, prefs.maxWidth, prefs.quality]);
+
+  useEffect(() => {
+    if (displayId == null) return undefined;
+    const sink = new FrameSink(canvasRef.current, {
+      onSize: (w, h) => setSize({ w, h }),
+      onNeedKey: () => conn.requestKey(displayId),
+    });
+    const off = conn.on('frame', (f) => f.displayId === displayId && sink.push(f));
+    const timer = setInterval(() => onStats?.(sink.takePainted()), 1000);
+    return () => {
+      off();
+      clearInterval(timer);
+      sink.close();
+    };
+  }, [conn, displayId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const el = boxRef.current;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    return () => ro.disconnect();
+  }, []);
+
+  const st = fit(box.w, box.h, size.w, size.h, prefs.fitMode);
+  return (
+    <div className="stage-box" ref={boxRef}>
+      <div className="stage" style={{ width: st.w, height: st.h }}>
+        <canvas ref={canvasRef} className={`remote ${penDim ? 'dim' : ''}`} />
+        {touch && <DirectSurface conn={conn} displayId={displayId} prefs={prefs} />}
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function Session() {
   const { session, prefs, setPrefs, disconnect, identity, toast } = useApp();
   const conn = session.conn;
   const displays = session.displays || [];
-  const canControl = session.perms?.control;
+  const canControl = !!session.perms?.control;
 
+  const [purposeId, setPurposeId] = useState(prefs.purpose);
   const [displayId, setDisplayId] = useState(null);
-  const [mode, setMode] = useState(() => (matchMedia('(pointer: coarse)').matches ? 'trackpad' : 'direct'));
-  const [barOpen, setBarOpen] = useState(true);
+  const [hud, setHud] = useState(true);
+  const [sheet, setSheet] = useState(null); // 'purpose' | 'quality' | null
   const [arrangeOpen, setArrangeOpen] = useState(false);
-  const [frameSize, setFrameSize] = useState({ w: 16, h: 9 });
-  const [stats, setStats] = useState({ fps: 0 });
-  const [stageBox, setStageBox] = useState({ w: 0, h: 0 });
+  const [fps, setFps] = useState(0);
 
-  const canvasRef = useRef(null);
-  const wrapRef = useRef(null);
-  const fpsCount = useRef(0);
-
+  // a purpose that needs control falls back to mirror when the host has not granted it
+  const wanted = purposeById(purposeId);
+  const purpose = wanted.needsControl && !canControl ? purposeById('mirror') : wanted;
   const myDisplay = displays.find((d) => d.owner === identity.id);
-  const active = displays.find((d) => d.id === displayId);
+  const isExtend = purpose.id === 'extend';
+  const showVideo = purpose.needsVideo || (purpose.id === 'pen' && prefs.penPreview);
 
-  // pick a display: my extended one if it exists, else the primary
+  // choose a display: mirror/pen -> primary; extend -> my own virtual display
   useEffect(() => {
     if (!displays.length) return;
-    if (myDisplay && displayId !== myDisplay.id && !displays.some((d) => d.id === displayId)) setDisplayId(myDisplay.id);
-    else if (displayId == null || !displays.some((d) => d.id === displayId)) setDisplayId((displays.find((d) => d.primary) || displays[0]).id);
-  }, [displays, displayId, myDisplay]);
+    if (isExtend) {
+      if (myDisplay) setDisplayId(myDisplay.id);
+    } else if (displayId == null || !displays.some((d) => d.id === displayId) || displays.find((d) => d.id === displayId)?.owner === identity.id) {
+      setDisplayId((displays.find((d) => d.primary) || displays[0]).id);
+    }
+  }, [displays, isExtend, myDisplay?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // extend: create the virtual screen when entering, remove it when leaving
+  useEffect(() => {
+    if (!isExtend) return undefined;
+    const w = Math.min(3840, Math.round(screen.width || 1280));
+    const h = Math.min(2160, Math.round(screen.height || 720));
+    conn.extend(true, { w: Math.max(w, h), h: Math.min(w, h) });
+    return () => conn.extend(false);
+  }, [conn, isExtend]);
 
   useEffect(() => {
-    if (myDisplay) setDisplayId(myDisplay.id);
-  }, [myDisplay?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // subscribe to the chosen display's frames
-  useEffect(() => {
-    if (displayId == null) return undefined;
-    conn.subscribe(displayId, { maxFps: prefs.maxFps, maxWidth: prefs.maxWidth, quality: prefs.quality });
-    return () => conn.unsubscribe(displayId);
-  }, [conn, displayId, prefs.maxFps, prefs.maxWidth, prefs.quality]);
-
-  // draw frames; decode only the newest while a decode is in flight
-  useEffect(() => {
-    let latest = null;
-    let busy = false;
-    const draw = async () => {
-      busy = true;
-      while (latest) {
-        const f = latest;
-        latest = null;
-        try {
-          const bmp = await createImageBitmap(new Blob([f.data], { type: 'image/jpeg' }));
-          const c = canvasRef.current;
-          if (c) {
-            if (c.width !== bmp.width || c.height !== bmp.height) {
-              c.width = bmp.width;
-              c.height = bmp.height;
-              setFrameSize({ w: bmp.width, h: bmp.height });
-            }
-            c.getContext('2d').drawImage(bmp, 0, 0);
-            fpsCount.current++;
-          }
-          bmp.close();
-        } catch {
-          /* corrupt frame: skip */
-        }
-      }
-      busy = false;
-    };
-    const off = conn.on('frame', (f) => {
-      if (f.displayId !== displayId) return;
-      latest = f;
-      if (!busy) draw();
-    });
-    const timer = setInterval(() => {
-      setStats({ fps: fpsCount.current });
-      fpsCount.current = 0;
-    }, 1000);
+    const off1 = conn.on('extend-result', (m) => (m.ok ? toast('Extended display ready', 'ok') : toast(m.error || 'Could not extend', 'error')));
+    const off2 = conn.on('arrange-result', (m) => !m.ok && toast(m.error || 'Could not move display', 'error'));
     return () => {
-      off();
-      clearInterval(timer);
+      off1();
+      off2();
     };
-  }, [conn, displayId]);
+  }, [conn, toast]);
 
-  // measure the area available to the picture
+  // hardware keyboard -> host (not while the on-screen keyboard purpose owns typing)
   useEffect(() => {
-    const el = wrapRef.current;
-    const ro = new ResizeObserver(() => setStageBox({ w: el.clientWidth, h: el.clientHeight }));
-    ro.observe(el);
-    setStageBox({ w: el.clientWidth, h: el.clientHeight });
-    return () => ro.disconnect();
-  }, [mode]);
-
-  // hardware keyboard -> host
-  useEffect(() => {
-    if (!canControl || !prefs.captureKeyboard) return undefined;
+    if (!canControl || !prefs.captureKeyboard || purpose.id === 'keyboard') return undefined;
     const handler = (down) => (e) => {
       if (e.target.closest?.('input, textarea, select')) return;
       if (e.code === 'F11') return;
@@ -134,125 +146,123 @@ export default function Session() {
       window.removeEventListener('keydown', kd);
       window.removeEventListener('keyup', ku);
     };
-  }, [conn, canControl, prefs.captureKeyboard]);
+  }, [conn, canControl, prefs.captureKeyboard, purpose.id]);
 
-  // extend result feedback
-  useEffect(() => {
-    const off1 = conn.on('extend-result', (m) => (m.ok ? toast('Extended display ready', 'ok') : toast(m.error || 'Could not extend', 'error')));
-    const off2 = conn.on('arrange-result', (m) => !m.ok && toast(m.error || 'Could not move display', 'error'));
-    return () => {
-      off1();
-      off2();
-    };
-  }, [conn, toast]);
-
-  const toggleExtend = useCallback(() => {
-    if (myDisplay) return conn.extend(false);
-    const w = Math.min(3840, Math.round((screen.width || 1280) * (window.devicePixelRatio > 1.5 ? 1 : 1)));
-    const h = Math.min(2160, Math.round(screen.height || 720));
-    conn.extend(true, { w: Math.max(w, h), h: Math.min(w, h) });
-  }, [conn, myDisplay]);
+  const choose = useCallback((id) => {
+    setPurposeId(id);
+    setPrefs({ purpose: id });
+    setSheet(null);
+  }, [setPrefs]);
 
   const fullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen?.().catch(() => {});
   };
-
-  const stageSize = (() => {
-    const box = { ...stageBox };
-    return fit(box.w, box.h, frameSize.w, frameSize.h, prefs.fitMode);
-  })();
   const q = QUALITY.find((x) => x.maxWidth === prefs.maxWidth && x.maxFps === prefs.maxFps)?.value || 'balanced';
 
-  const stage = (
-    <div className="stage-box" ref={wrapRef}>
-      <div className="stage" style={{ width: stageSize.w, height: stageSize.h }}>
-        <canvas ref={canvasRef} className={`remote ${mode === 'pen' ? 'dim' : ''}`} />
-        {canControl && mode === 'direct' && <DirectSurface conn={conn} displayId={displayId} prefs={prefs} />}
-        {canControl && mode === 'pen' && <PenSurface conn={conn} displayId={displayId} />}
-        {!active && <div className="stage-wait">Waiting for the screen…</div>}
+  let body;
+  if (purpose.id === 'trackpad') body = <TrackpadSurface conn={conn} prefs={prefs} />;
+  else if (purpose.id === 'keyboard') body = <KeyboardPanel conn={conn} haptics={prefs.haptics} />;
+  else if (purpose.id === 'pen' && !showVideo) {
+    body = (
+      <div className="pen-full">
+        <PenSurface conn={conn} displayId={displayId} />
       </div>
-    </div>
-  );
+    );
+  } else if (purpose.id === 'pen') {
+    body = (
+      <Screen conn={conn} displayId={displayId} prefs={prefs} penDim onStats={setFps}>
+        <PenSurface conn={conn} displayId={displayId} />
+      </Screen>
+    );
+  } else {
+    body = (
+      <Screen conn={conn} displayId={displayId} prefs={prefs} touch={canControl && prefs.touchControl} onStats={setFps}>
+        {isExtend && !myDisplay && <div className="stage-wait">Creating the extra screen…</div>}
+      </Screen>
+    );
+  }
 
   return (
-    <div className={`session mode-${mode}`}>
-      <header className={`session-bar ${barOpen ? '' : 'collapsed'}`}>
-        <button className="icon-btn" onClick={disconnect} aria-label="Disconnect" title="Disconnect">
-          <Icon name="close" />
-        </button>
-        {barOpen && (
-          <>
-            <div className="session-title">
-              <strong>{session.host?.name}</strong>
-              <small>{session.rtt != null ? `${session.rtt} ms` : 'connected'}{prefs.showStats ? ` · ${stats.fps} fps · ${frameSize.w}×${frameSize.h}` : ''}{!canControl ? ' · view only' : ''}</small>
-            </div>
-            {displays.length > 1 && (
-              <select className="select compact" value={displayId ?? ''} onChange={(e) => setDisplayId(Number(e.target.value))} aria-label="Display">
-                {displays.map((d, i) => (
-                  <option key={d.id} value={d.id}>
-                    {d.virtual ? (d.owner === identity.id ? 'Extended (this device)' : d.name) : `Display ${i + 1}`}
-                    {d.primary ? ' ★' : ''}
-                  </option>
-                ))}
-              </select>
-            )}
-            {canControl && (
-              <div className="mode-switch" role="radiogroup" aria-label="Input mode">
-                {MODES.map((m) => (
-                  <button key={m.value} role="radio" aria-checked={mode === m.value} className={mode === m.value ? 'on' : ''} onClick={() => setMode(m.value)} title={m.label}>
-                    <Icon name={m.icon} size={18} />
-                    <span>{m.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-            <button className={`icon-btn ${myDisplay ? 'on' : ''}`} onClick={toggleExtend} title={myDisplay ? 'Stop extending' : 'Use this device as an extra screen'} disabled={!canControl}>
-              <Icon name={myDisplay ? 'extend' : 'mirror'} />
+    <div className={`session purpose-${purpose.id} ${hud ? '' : 'hud-off'}`}>
+      <div className="session-body">{body}</div>
+
+      <div className={`hud ${hud ? 'open' : ''}`}>
+        {hud && (
+          <div className="hud-bar">
+            <button className="hud-btn" onClick={disconnect} aria-label="Disconnect" title="Disconnect">
+              <Icon name="close" size={18} />
             </button>
-            {myDisplay && (
-              <button className="icon-btn" onClick={() => setArrangeOpen(true)} title="Arrange displays">
-                <Icon name="layout" />
+            <div className="hud-title">
+              <strong>{session.host?.name}</strong>
+              <small>
+                {purpose.title}
+                {session.rtt != null ? ` · ${session.rtt} ms` : ''}
+                {prefs.showStats && showVideo ? ` · ${fps} fps` : ''}
+                {!canControl ? ' · view only' : ''}
+              </small>
+            </div>
+            <button className="hud-chip" onClick={() => setSheet(sheet === 'purpose' ? null : 'purpose')}>
+              <Icon name={purpose.icon} size={16} />
+              <span>Switch</span>
+            </button>
+            {showVideo && (
+              <button className="hud-btn" onClick={() => setSheet(sheet === 'quality' ? null : 'quality')} aria-label="Quality" title="Quality">
+                <Icon name="signal" size={18} />
               </button>
             )}
-            <button className="icon-btn" onClick={fullscreen} title="Full screen">
-              <Icon name="fullscreen" />
+            {isExtend && myDisplay && (
+              <button className="hud-btn" onClick={() => setArrangeOpen(true)} aria-label="Arrange displays" title="Arrange displays">
+                <Icon name="layout" size={18} />
+              </button>
+            )}
+            <button className="hud-btn" onClick={fullscreen} aria-label="Full screen" title="Full screen">
+              <Icon name="fullscreen" size={18} />
             </button>
-          </>
+          </div>
         )}
-        <button className="icon-btn" onClick={() => setBarOpen((v) => !v)} aria-label={barOpen ? 'Hide toolbar' : 'Show toolbar'}>
-          <Icon name="more" />
+        <button className="hud-toggle" onClick={() => { setHud((v) => !v); setSheet(null); }} aria-label={hud ? 'Hide toolbar' : 'Show toolbar'}>
+          <Icon name="more" size={18} />
         </button>
-      </header>
-
-      <div className="session-body">
-        {stage}
-        {canControl && mode === 'trackpad' && <TrackpadSurface conn={conn} prefs={prefs} />}
-        {canControl && mode === 'keyboard' && <KeyboardPanel conn={conn} haptics={prefs.haptics} />}
       </div>
 
-      {barOpen && (
-        <footer className="session-foot">
+      {sheet === 'purpose' && (
+        <div className="sheet" role="menu">
+          {PURPOSES.map((p) => {
+            const locked = p.needsControl && !canControl;
+            return (
+              <button key={p.id} role="menuitemradio" aria-checked={p.id === purpose.id} className={`sheet-row ${p.id === purpose.id ? 'on' : ''}`} disabled={locked} onClick={() => choose(p.id)}>
+                <span className={`sheet-ico tint-${p.tint}`}><Icon name={p.icon} size={18} /></span>
+                <span className="sheet-text">
+                  <strong>{p.title}</strong>
+                  <small>{locked ? 'Needs “allow control” on the computer' : p.hint}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {sheet === 'quality' && (
+        <div className="sheet sheet-quality">
           <Segmented label="Quality" value={q} onChange={(v) => { const o = QUALITY.find((x) => x.value === v); setPrefs({ maxFps: o.maxFps, maxWidth: o.maxWidth, quality: o.quality }); }} options={QUALITY.map(({ value, label }) => ({ value, label }))} />
           <Segmented label="Fit" value={prefs.fitMode} onChange={(v) => setPrefs({ fitMode: v })} options={[{ value: 'fit', label: 'Fit' }, { value: 'stretch', label: 'Stretch' }]} />
-          {canControl && (
-            <label className="check">
-              <input type="checkbox" checked={prefs.captureKeyboard} onChange={(e) => setPrefs({ captureKeyboard: e.target.checked })} />
-              Send my keyboard
-            </label>
+          {displays.length > 1 && !isExtend && (
+            <select className="select compact" value={displayId ?? ''} onChange={(e) => setDisplayId(Number(e.target.value))} aria-label="Display">
+              {displays.filter((d) => d.owner !== identity.id).map((d, i) => (
+                <option key={d.id} value={d.id}>{d.virtual ? d.name : `Display ${i + 1}`}{d.primary ? ' ★' : ''}</option>
+              ))}
+            </select>
           )}
-        </footer>
+        </div>
       )}
 
       {arrangeOpen && (
         <Modal title="Arrange displays" onClose={() => setArrangeOpen(false)} wide>
-          <p className="muted">Drag your device&apos;s screen (＋) to where it physically sits. Paneo remembers this for next time.</p>
+          <p className="muted">Drag your device&apos;s screen (＋) to where it physically sits. CastDesk remembers this for next time.</p>
           <ArrangementEditor displays={displays} editable={(d) => d.owner === identity.id} onCommit={(id, x, y) => conn.arrange(x, y)} highlight={(d) => d.owner === identity.id} />
           {isElectron && (
             <div className="modal-actions">
-              <button className="btn" onClick={() => bridge.moveToDisplay?.(0)}>
-                Show this window on my other monitor
-              </button>
+              <button className="btn" onClick={() => bridge.moveToDisplay?.(0)}>Show this window on my other monitor</button>
             </div>
           )}
         </Modal>

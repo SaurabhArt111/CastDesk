@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { snapDisplay, hasOverlap, isConnected, desktopBounds } from '@paneo/shared';
+import { snapDisplay, hasOverlap, isConnected, desktopBounds } from '@castdesk/shared';
 import { createProvider, runShell } from './providers.js';
 
 const FALLBACK = [{ nativeId: '0', name: 'Display 1', x: 0, y: 0, w: 1920, h: 1080, scale: 1, primary: true }];
@@ -106,7 +106,7 @@ export class DisplayManager extends EventEmitter {
     const saved = this.store?.get(deviceId)?.arrangement;
     const b = desktopBounds(this.items);
     const pos = { x: x ?? saved?.x ?? b.x + b.w, y: y ?? saved?.y ?? b.y };
-    const label = `Paneo ${safeName(name)}`;
+    const label = `CastDesk ${safeName(name)}`;
 
     let created = null;
     if (this.provider.caps.virtual) {
@@ -132,7 +132,7 @@ export class DisplayManager extends EventEmitter {
     const d = this.items.find((i) => i.owner === deviceId);
     if (!d) return;
     if (this.provider.caps.virtual) await this.provider.removeVirtual(d.nativeId);
-    else if (this.virtualCommands?.remove) await runShell(fill(this.virtualCommands.remove, { name: `Paneo ${safeName(this.store?.get(deviceId)?.name)}`, id: d.nativeId }));
+    else if (this.virtualCommands?.remove) await runShell(fill(this.virtualCommands.remove, { name: `CastDesk ${safeName(this.store?.get(deviceId)?.name)}`, id: d.nativeId }));
     this.owners.delete(d.nativeId);
     const rec = this.store?.get(deviceId);
     if (rec) this.store.update(deviceId, { arrangement: { ...(rec.arrangement || {}), extend: remember, x: d.x, y: d.y } });

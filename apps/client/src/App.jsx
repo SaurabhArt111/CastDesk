@@ -5,16 +5,20 @@ import Session from './views/Session.jsx';
 import Settings from './views/Settings.jsx';
 import Permissions from './views/Permissions.jsx';
 import DisplayLayout from './views/DisplayLayout.jsx';
+import Shell from './components/Shell.jsx';
 
 function Router() {
   const { view, session } = useApp();
   if (session?.status === 'live' && view === 'session') return <Session />;
-  switch (view) {
-    case 'settings': return <Settings />;
-    case 'permissions': return <Permissions />;
-    case 'layout': return <DisplayLayout />;
-    default: return <Home />;
-  }
+  const page = (() => {
+    switch (view) {
+      case 'settings': return <Settings />;
+      case 'permissions': return <Permissions />;
+      case 'layout': return <DisplayLayout />;
+      default: return <Home />;
+    }
+  })();
+  return <Shell>{page}</Shell>;
 }
 
 export default function App() {

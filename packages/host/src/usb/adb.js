@@ -3,6 +3,8 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { DEFAULT_PORT } from '@castdesk/shared';
+import { installedAdbPath } from './platform-tools.js';
 
 const run = (bin, args, timeout = 8000) =>
   new Promise((resolve, reject) => {
@@ -10,10 +12,11 @@ const run = (bin, args, timeout = 8000) =>
   });
 
 /** Locate adb: explicit path, ANDROID_HOME/SDK, then PATH. */
-export function findAdb(explicit) {
+export function findAdb(explicit, toolsDir) {
   const exe = process.platform === 'win32' ? 'adb.exe' : 'adb';
   const candidates = [
     explicit,
+    toolsDir && installedAdbPath(toolsDir),
     process.env.ANDROID_HOME && path.join(process.env.ANDROID_HOME, 'platform-tools', exe),
     process.env.ANDROID_SDK_ROOT && path.join(process.env.ANDROID_SDK_ROOT, 'platform-tools', exe),
     path.join(os.homedir(), 'Android', 'Sdk', 'platform-tools', exe),
@@ -32,20 +35,30 @@ export function findAdb(explicit) {
  * tethered link is just another network interface and is found by Discovery.)
  */
 export class AdbForwarder extends EventEmitter {
-  constructor({ adbPath, intervalMs = 3000 } = {}) {
+  constructor({ adbPath, toolsDir, intervalMs = 3000 } = {}) {
     super();
-    this.adb = findAdb(adbPath);
+    this.toolsDir = toolsDir;
+    this.adb = findAdb(adbPath, toolsDir);
+    this.lastError = null;
     this.intervalMs = intervalMs;
     this.known = new Map();
     this.busy = false;
     this.lastList = '';
   }
 
+  /** Re-resolve the adb binary (after the in-app install put one in toolsDir). */
+  locate() {
+    this.adb = findAdb(undefined, this.toolsDir);
+    return this.adb;
+  }
+
   async available() {
     try {
       await run(this.adb, ['version']);
+      this.lastError = null;
       return true;
-    } catch {
+    } catch (e) {
+      this.lastError = e.code === 'ENOENT' ? 'adb is not installed' : String(e.stderr || e.message || e).trim().split('\n')[0];
       return false;
     }
   }
@@ -63,9 +76,12 @@ export class AdbForwarder extends EventEmitter {
       });
   }
 
-  start(port) {
+  async start(port) {
     this.port = port;
     this.stop();
+    // A stale adb server from another version (Android Studio, a vendor tool) makes `adb devices`
+    // fail silently. Starting it explicitly gives a clean daemon of *our* adb.
+    await run(this.adb, ['start-server'], 15000).catch(() => {});
     this.#tick();
     this.timer = setInterval(() => this.#tick(), this.intervalMs);
     this.timer.unref?.();
@@ -111,22 +127,25 @@ export class AdbForwarder extends EventEmitter {
           this.known.delete(serial);
         }
       }
-    } catch {
-      /* adb missing or server not running: stay quiet */
+      this.lastError = null;
+    } catch (e) {
+      this.lastError = String(e.stderr || e.message || e).trim().split('\n')[0];
+      if (/version|daemon|server/i.test(this.lastError)) run(this.adb, ['kill-server']).catch(() => {}); // next tick restarts it
     } finally {
       this.busy = false;
     }
   }
 
+  /** The phone always dials 127.0.0.1:DEFAULT_PORT; map it to wherever the host really listens. */
   reverse(serial) {
-    return run(this.adb, ['-s', serial, 'reverse', `tcp:${this.port}`, `tcp:${this.port}`]);
+    return run(this.adb, ['-s', serial, 'reverse', `tcp:${DEFAULT_PORT}`, `tcp:${this.port}`]);
   }
 
-  /** Open the Paneo Android app and tell it to connect through the USB tunnel. */
+  /** Open the CastDesk Android app and tell it to connect through the USB tunnel. */
   launchApp(serial) {
     return run(this.adb, [
       '-s', serial, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW',
-      '-d', `paneo://connect?host=127.0.0.1\\&port=${this.port}\\&transport=usb`,
+      '-d', `castdesk://connect?host=127.0.0.1\\&port=${DEFAULT_PORT}\\&transport=usb`,
     ]);
   }
 }

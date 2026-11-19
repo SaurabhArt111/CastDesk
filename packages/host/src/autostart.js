@@ -23,7 +23,7 @@ function targets({ id, home }) {
  * this module covers Linux and headless installs, and is unit-testable
  * because `home` can be redirected.
  */
-export async function setAutostart(enabled, { id = 'paneo', name = 'Paneo', exec, args = [], hidden = true, home = os.homedir(), platform = process.platform } = {}) {
+export async function setAutostart(enabled, { id = 'castdesk', name = 'CastDesk', exec, args = [], hidden = true, home = os.homedir(), platform = process.platform } = {}) {
   const fullArgs = hidden ? [...args, '--hidden'] : args;
   const t = targets({ id, home });
 
@@ -71,7 +71,7 @@ Comment=Start ${name} when you log in
   }
 }
 
-export async function isAutostart({ id = 'paneo', name = 'Paneo', home = os.homedir(), platform = process.platform } = {}) {
+export async function isAutostart({ id = 'castdesk', name = 'CastDesk', home = os.homedir(), platform = process.platform } = {}) {
   if (platform === 'win32') {
     try {
       const out = await run('reg', ['query', RUN_KEY, '/v', name]);

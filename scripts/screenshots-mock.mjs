@@ -1,7 +1,7 @@
 /**
  * Marketing screenshots of the REAL desktop UI populated with sample data
  * (nearby devices, paired devices, three displays incl. an extended one).
- * The client is loaded in Chrome with a fake `window.paneo` bridge - the same
+ * The client is loaded in Chrome with a fake `window.castdesk` bridge - the same
  * surface the Electron preload exposes - so every pixel is the shipping UI.
  *
  *   node scripts/screenshots-mock.mjs apps/site/public/screens
@@ -50,7 +50,8 @@ const mock = {
     ],
     settings: { deviceName: '', autostart: true, startMinimized: true, autoConnectTrusted: true, advertiseOnNetwork: true, allowIncoming: true, requireApprovalForControl: true, defaultAllowControl: true, usbAutoForward: true, port: 7420, advertise: true, allowControl: true, virtualCommands: { create: '', remove: '' } },
     inputAvailable: true,
-    adb: { available: true, devices: [{ serial: 'ABC', model: 'Pixel_9_Pro' }], list: [{ serial: 'ABC', state: 'device', model: 'Pixel_9_Pro', linked: true }, { serial: 'XYZ', state: 'unauthorized', model: 'Galaxy_Tab_S9', linked: false }] },
+    capture: { connected: true, capturing: [], error: null, video: ['h264', 'vp8'] },
+    adb: { available: true, error: null, install: { state: 'idle', pct: 0, error: null }, enabled: true, devices: [{ serial: 'ABC', model: 'Pixel_9_Pro' }], list: [{ serial: 'ABC', state: 'device', model: 'Pixel_9_Pro', linked: true }, { serial: 'XYZ', state: 'unauthorized', model: 'Galaxy_Tab_S9', linked: false }] },
     caps: { provider: 'win32-displaysettings', arrange: true, virtual: false, note: 'Repositioning uses ChangeDisplaySettingsEx. A virtual monitor needs an installed Indirect Display Driver.' },
   },
   peers: [
@@ -59,9 +60,9 @@ const mock = {
   ],
   permissions: [
     { id: 'firewall', title: 'Windows Firewall', description: 'Other devices connect to this PC on TCP 7420 and find it with mDNS (UDP 5353) and UDP 7421. The installer adds the rule.', status: 'granted', action: null },
-    { id: 'uac', title: 'Controlling elevated windows', description: 'Windows blocks input into apps running as Administrator unless Paneo is also run as administrator. Mirroring always works.', status: 'info', action: null },
+    { id: 'uac', title: 'Controlling elevated windows', description: 'Windows blocks input into apps running as Administrator unless CastDesk is also run as administrator. Mirroring always works.', status: 'info', action: null },
     { id: 'input', title: 'Remote input', description: 'Mouse, keyboard, touch and pen input from paired devices can be injected on this computer.', status: 'granted', action: null },
-    { id: 'autostart', title: 'Start with this computer', description: 'Paneo runs quietly in the tray after you sign in so devices reconnect automatically.', status: 'granted', action: null },
+    { id: 'autostart', title: 'Start with this computer', description: 'CastDesk runs quietly in the tray after you sign in so devices reconnect automatically.', status: 'granted', action: null },
   ],
 };
 
@@ -70,12 +71,12 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1.5 });
 await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: process.env.LIGHT ? 'light' : 'dark' }]);
 await page.evaluateOnNewDocument((m) => {
-  localStorage.setItem('paneo.hosts', JSON.stringify({
+  localStorage.setItem('castdesk.hosts', JSON.stringify({
     n2: { id: 'n2', name: 'MacBook Pro', platform: 'darwin', secret: 'x', addresses: ['192.168.1.52'], port: 7420, lastConnected: Date.now() - 3600e3, auto: true },
   }));
-  localStorage.setItem('paneo.prefs', JSON.stringify({ autoConnectTrusted: false }));
+  localStorage.setItem('castdesk.prefs', JSON.stringify({ autoConnectTrusted: false }));
   const noop = () => () => {};
-  window.paneo = {
+  window.castdesk = {
     platform: m.platform, hostname: m.hostname,
     getState: async () => m.state, onState: noop,
     getPeers: async () => m.peers, onPeers: (cb) => { setTimeout(() => cb(m.peers), 50); return () => {}; },
@@ -88,13 +89,13 @@ await page.goto('http://127.0.0.1:4999/', { waitUntil: 'networkidle2' });
 await new Promise((r) => setTimeout(r, 700));
 const shot = (name) => page.screenshot({ path: path.join(out, `${name}.webp`), type: 'webp', quality: 90 });
 const nav = async (label) => {
-  await page.evaluate((l) => [...document.querySelectorAll('button')].find((b) => b.textContent.includes(l))?.click(), label);
+  await page.evaluate((l) => [...document.querySelectorAll('.side .nav-item')].find((b) => b.textContent.includes(l))?.click(), label);
   await new Promise((r) => setTimeout(r, 600));
 };
 await shot('desktop-home');
-await nav('Display layout'); await shot('desktop-layout');
-await nav('Back'); await nav('Permissions'); await shot('desktop-permissions');
-await nav('Back'); await nav('Settings'); await shot('desktop-settings');
+await nav('Displays'); await shot('desktop-layout');
+await nav('Permissions'); await shot('desktop-permissions');
+await nav('Settings'); await shot('desktop-settings');
 await browser.close();
 server.close();
 fakeSource.close();

@@ -13,3 +13,4 @@ apps/client/android/app/src/main/assets/capacitor.config.json
 apps/client/android/app/src/main/assets/capacitor.plugins.json
 *.keystore
 *.jks
+package-lock.json

@@ -7,7 +7,7 @@ import { DeviceIcon } from '../components/Icon.jsx';
 
 /** The host's own display arrangement, like Windows "Display settings". */
 export default function DisplayLayout() {
-  const { hostState, setView, toast } = useApp();
+  const { hostState, toast } = useApp();
   const displays = hostState?.displays || [];
   const caps = hostState?.caps;
   const [busy, setBusy] = useState(false);
@@ -24,9 +24,7 @@ export default function DisplayLayout() {
   return (
     <div className="page">
       <header className="topbar">
-        <button className="btn ghost" onClick={() => setView('home')}><Icon name="back" size={16} /> Back</button>
         <h1>Display layout</h1>
-        <span />
       </header>
       <main className="page-body">
         <p className="muted">

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { WebSocketServer } from 'ws';
-import { DEFAULT_PORT, DEFAULT_SETTINGS, MSG, PROTOCOL_VERSION, FRAME_HEADER_BYTES, randomHex, parseMessage } from '@paneo/shared';
+import { DEFAULT_PORT, DEFAULT_SETTINGS, MSG, PROTOCOL_VERSION, FRAME, FRAME_HEADER_BYTES, VIDEO_CODECS, randomHex, parseMessage } from '@castdesk/shared';
 import { TrustStore } from './trust-store.js';
 import { PinManager } from './pin.js';
 import { Discovery } from './discovery.js';
@@ -59,7 +59,10 @@ export class HostService extends EventEmitter {
     this.sessions = new Set();
     this.source = null;
     this.sourceToken = randomHex(16);
-    this.lastFrames = new Map();
+    this.lastFrames = new Map(); // last JPEG per display (for late joiners)
+    this.sourceCaps = { video: [] }; // codecs the capture source can encode
+    this.sourceStatus = { connected: false, capturing: [], error: null };
+    this.lastKeyReq = new Map();
     this.failures = new Map();
     this.port = 0;
 
@@ -195,7 +198,7 @@ export class HostService extends EventEmitter {
     if (url.pathname === '/api/info') {
       const { sourceToken, addresses, ...pub } = this.info();
       res.writeHead(200, { ...cors, 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ app: 'paneo', ...pub }));
+      return res.end(JSON.stringify({ app: 'castdesk', ...pub }));
     }
     if (url.pathname === '/api/ping') {
       res.writeHead(200, cors);
@@ -208,7 +211,7 @@ export class HostService extends EventEmitter {
     const root = this.opts.webRoot;
     if (!root || !fs.existsSync(root)) {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      return res.end('Paneo host is running. Open the Paneo app on your other device to connect.');
+      return res.end('CastDesk host is running. Open the CastDesk app on your other device to connect.');
     }
     let rel = decodeURIComponent(pathname);
     if (rel.endsWith('/')) rel += 'index.html';
@@ -224,6 +227,7 @@ export class HostService extends EventEmitter {
 
   #upgrade(req, socket, head) {
     const url = new URL(req.url, 'http://x');
+    socket.setNoDelay?.(true); // small input events must not wait for Nagle's algorithm
     if (url.pathname === '/ws') {
       this.clientWss.handleUpgrade(req, socket, head, (ws) => new ClientSession(this, ws, req));
     } else if (url.pathname === '/source') {
@@ -243,60 +247,134 @@ export class HostService extends EventEmitter {
   #attachSource(ws) {
     this.source?.close();
     this.source = ws;
+    this.sourceCaps = { video: [] };
     ws.on('message', (data, isBinary) => {
-      if (isBinary) this.#relayFrame(data);
-      else {
-        const m = parseMessage(data);
-        if (m?.t === 'source-error') this.emit('log', 'warn', `capture: ${m.message}`);
+      if (isBinary) return this.#relayFrame(data);
+      const m = parseMessage(data);
+      if (!m) return;
+      if (m.t === 'source-error') {
+        this.sourceStatus = { ...this.sourceStatus, error: String(m.message || 'capture error') };
+        this.emit('log', 'warn', `capture: ${m.message}`);
+        this.emit('source-status', this.sourceStatus);
+      } else if (m.t === 'source-caps') {
+        const video = (Array.isArray(m.video) ? m.video : []).filter((c) => VIDEO_CODECS.includes(c));
+        this.sourceCaps = { video };
+        this._demandChanged();
+      } else if (m.t === 'source-status') {
+        this.sourceStatus = { ...this.sourceStatus, capturing: Array.isArray(m.capturing) ? m.capturing : [], error: m.error || null };
+        this.emit('source-status', this.sourceStatus);
       }
     });
     ws.on('close', () => {
-      if (this.source === ws) this.source = null;
+      if (this.source === ws) {
+        this.source = null;
+        this.sourceStatus = { connected: false, capturing: [], error: null };
+        this.emit('source-status', this.sourceStatus);
+      }
     });
+    this.sourceStatus = { connected: true, capturing: [], error: null };
     this.emit('source', true);
+    this.emit('source-status', this.sourceStatus);
     this._demandChanged();
   }
 
   #relayFrame(data) {
     const buf = Buffer.isBuffer(data) ? data : Buffer.concat(data);
     if (buf.length < FRAME_HEADER_BYTES) return;
+    const type = buf[0];
     const displayId = buf[1];
-    this.lastFrames.set(displayId, buf);
     const now = Date.now();
+    if (type === FRAME.VIDEO_JPEG) this.lastFrames.set(displayId, buf);
     for (const s of this.sessions) {
       const sub = s.subs.get(displayId);
       if (!sub) continue;
-      if (now - sub.lastSent < 1000 / sub.fps - 2) continue;
-      if (s.ws.bufferedAmount > MAX_BUFFERED) {
-        s.dropped++;
-        continue;
+      if (type === FRAME.VIDEO_JPEG) {
+        if (sub.mode !== 'jpeg') continue;
+        if (now - sub.lastSent < 1000 / sub.fps - 2) continue;
+        if (s.ws.bufferedAmount > MAX_BUFFERED) {
+          s.dropped++;
+          continue;
+        }
+        sub.lastSent = now;
+        s.ws.send(buf, { binary: true });
+      } else {
+        if (sub.mode !== 'video') continue;
+        if (type === FRAME.VIDEO_KEY) {
+          sub.hasKey = true;
+        } else if (!sub.hasKey) {
+          continue; // a delta frame is useless without its key frame
+        } else if (s.ws.bufferedAmount > MAX_BUFFERED) {
+          // the link cannot keep up: drop, and resync with a key frame as soon as it drains
+          s.dropped++;
+          sub.hasKey = false;
+          this._requestKey(displayId);
+          continue;
+        }
+        s.ws.send(buf, { binary: true });
       }
-      sub.lastSent = now;
-      s.ws.send(buf, { binary: true });
     }
   }
 
   _sendLastFrame(session, displayId) {
+    const sub = session.subs.get(displayId);
+    if (sub?.mode === 'video') return this._requestKey(displayId);
     const f = this.lastFrames.get(displayId);
     if (f && session.ws.readyState === 1) session.ws.send(f, { binary: true });
+    return undefined;
+  }
+
+  /** Ask the capture source for a fresh key frame (rate limited). */
+  _requestKey(displayId) {
+    const now = Date.now();
+    if (now - (this.lastKeyReq.get(displayId) || 0) < 400) return;
+    this.lastKeyReq.set(displayId, now);
+    if (this.source?.readyState === 1) this.source.send(JSON.stringify({ t: MSG.KEYFRAME, display: displayId }));
   }
 
   /** Tell the capture source which displays to capture and at what settings. */
   _demandChanged() {
-    const want = new Map();
-    for (const s of this.sessions) {
-      for (const [id, sub] of s.subs) {
-        const cur = want.get(id) || { id, fps: 0, maxWidth: 0, quality: 0 };
-        cur.fps = Math.max(cur.fps, sub.fps);
-        cur.maxWidth = Math.max(cur.maxWidth, sub.maxWidth);
-        cur.quality = Math.max(cur.quality, sub.quality);
-        want.set(id, cur);
+    const byDisplay = new Map();
+    for (const s of this.sessions) for (const [id, sub] of s.subs) (byDisplay.get(id) || byDisplay.set(id, []).get(id)).push(sub);
+
+    const want = [];
+    for (const [id, subs] of byDisplay) {
+      // One encoder per display: pick the codec most viewers can decode, the rest get JPEG.
+      let codec = null;
+      let best = 0;
+      for (const c of this.sourceCaps.video) {
+        const n = subs.filter((x) => x.codecs.includes(c)).length;
+        if (n > best) {
+          best = n;
+          codec = c;
+        }
       }
+      let jpeg = false;
+      let video = false;
+      for (const sub of subs) {
+        const prev = sub.mode;
+        sub.mode = codec && sub.codecs.includes(codec) ? 'video' : 'jpeg';
+        if (sub.mode !== prev) sub.hasKey = false;
+        if (sub.mode === 'video') video = true;
+        else jpeg = true;
+      }
+      want.push({
+        id,
+        fps: Math.max(...subs.map((x) => x.fps)),
+        maxWidth: Math.max(...subs.map((x) => x.maxWidth)),
+        quality: Math.max(...subs.map((x) => x.quality)),
+        jpeg,
+        video,
+        codec: video ? codec : null,
+      });
     }
-    for (const id of [...this.lastFrames.keys()]) if (!want.has(id)) this.lastFrames.delete(id);
-    const demand = { t: MSG.DEMAND, displays: [...want.values()], layout: this.displays.current() };
+    for (const id of [...this.lastFrames.keys()]) if (!byDisplay.has(id)) this.lastFrames.delete(id);
+    const demand = { t: MSG.DEMAND, displays: want, layout: this.displays.current() };
     this.emit('demand', demand);
-    if (this.source?.readyState === 1) this.source.send(JSON.stringify(demand));
+    if (this.source?.readyState === 1) {
+      this.source.send(JSON.stringify(demand));
+      // viewers that just switched to (or joined) video need a key frame to start from
+      for (const w of want) if (w.video && [...this.sessions].some((s) => s.subs.get(w.id)?.mode === 'video' && !s.subs.get(w.id).hasKey)) this._requestKey(w.id);
+    }
   }
 
   /* ------------------------------ session hooks ------------------------------ */

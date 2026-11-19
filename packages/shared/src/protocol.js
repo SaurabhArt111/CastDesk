@@ -34,6 +34,7 @@ export const MSG = Object.freeze({
   PERM: 'perm',
   BYE: 'bye',
   DEMAND: 'demand', // host -> local capture source
+  KEYFRAME: 'keyframe', // viewer -> host, host -> source: please send a fresh key frame
 });
 
 export function encodeFrame({ type = FRAME.VIDEO_JPEG, displayId, width, height, seq, data }) {
@@ -82,7 +83,7 @@ export function parseMessage(raw) {
 export const newNonce = () => randomHex(16);
 
 export function authProof(secretHex, role, hostNonce, clientNonce, deviceId) {
-  return hmacHex(secretHex, utf8(`paneo-auth-v1|${role}|${deviceId}|${hostNonce}|${clientNonce}`));
+  return hmacHex(secretHex, utf8(`castdesk-auth-v1|${role}|${deviceId}|${hostNonce}|${clientNonce}`));
 }
 
 export function verifyProof(secretHex, role, hostNonce, clientNonce, deviceId, proof) {

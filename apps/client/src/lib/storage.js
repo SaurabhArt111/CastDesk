@@ -1,7 +1,7 @@
-import { randomHex, DEFAULT_SETTINGS } from '@paneo/shared';
+import { randomHex, DEFAULT_SETTINGS } from '@castdesk/shared';
 import { isElectron, isNative, osName, bridge } from './platform.js';
 
-const NS = 'paneo.';
+const NS = 'castdesk.';
 const read = (k, d) => {
   try {
     const v = localStorage.getItem(NS + k);
@@ -51,6 +51,9 @@ export const PREF_DEFAULTS = {
   keepAwake: true,
   showStats: false,
   fitMode: 'fit',
+  purpose: 'mirror', // mirror | extend | trackpad | keyboard | pen
+  touchControl: true, // mirror/extend: touching the picture clicks on the computer
+  penPreview: false, // pen pad: show the computer's screen faintly under the pad
   onboarded: false,
 };
 export const loadPrefs = () => ({ ...PREF_DEFAULTS, ...read('prefs', {}) });
