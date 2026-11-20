@@ -437,10 +437,21 @@ export class HostService extends EventEmitter {
       if (m.on === false) await this.displays.removeVirtual(session.device.id);
       else await this.displays.createVirtual(session.device.id, { w: m.w, h: m.h, x: m.x, y: m.y, name: session.device.name });
     } catch (err) {
-      session.send({ t: 'extend-result', ok: false, error: err.message });
+      session.send({ t: 'extend-result', ok: false, error: err.message, code: err.code || null });
       return;
     }
     session.send({ t: 'extend-result', ok: true });
+  }
+
+  /** Win+P from a paired device. "Second screen only" would blank the PC, so it is local-only. */
+  async _project(session, m) {
+    try {
+      if (!['internal', 'clone', 'extend'].includes(m.mode)) throw new Error('That mode can only be chosen on the computer');
+      await this.displays.project(m.mode);
+      session.send({ t: 'project-result', ok: true, mode: m.mode });
+    } catch (err) {
+      session.send({ t: 'project-result', ok: false, error: err.message });
+    }
   }
 
   async _arrange(session, m) {

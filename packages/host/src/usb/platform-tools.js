@@ -16,7 +16,7 @@ export const adbExeName = (platform = process.platform) => (platform === 'win32'
 /** Path adb will have after a successful install into `dir`. */
 export const installedAdbPath = (dir, platform = process.platform) => path.join(dir, 'platform-tools', adbExeName(platform));
 
-function download(url, file, onProgress, redirects = 5) {
+export function download(url, file, onProgress, redirects = 5) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith('http://') ? http : https;
     const req = client.get(url, (res) => {
@@ -46,11 +46,25 @@ function download(url, file, onProgress, redirects = 5) {
   });
 }
 
-function extract(zip, dir, platform = process.platform) {
-  // Windows 10+ and macOS ship bsdtar which reads .zip; Linux uses unzip.
-  const [cmd, args] = platform === 'linux' ? ['unzip', ['-o', '-q', zip, '-d', dir]] : ['tar', ['-xf', zip, '-C', dir]];
+/**
+ * How to unzip on each OS. Windows uses PowerShell's Expand-Archive: it is always there, and unlike a bare
+ * `tar` it cannot be hijacked by Git-for-Windows' GNU tar, which reads "C:\\..." as a remote host ("resolve failed").
+ */
+export function extractCommand(zip, dir, platform = process.platform) {
+  if (platform === 'win32') {
+    const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+    return ['powershell', ['-NoProfile', '-NonInteractive', '-Command', `$ProgressPreference='SilentlyContinue'; Expand-Archive -LiteralPath ${q(zip)} -DestinationPath ${q(dir)} -Force`]];
+  }
+  if (platform === 'darwin') return ['/usr/bin/ditto', ['-x', '-k', zip, dir]];
+  return ['unzip', ['-o', '-q', zip, '-d', dir]];
+}
+
+export function extract(zip, dir, platform = process.platform) {
+  const [cmd, args] = extractCommand(zip, dir, platform);
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { windowsHide: true, timeout: 120000 }, (err) => (err ? reject(new Error(`Could not unpack the download (${cmd}): ${err.message}`)) : resolve()));
+    execFile(cmd, args, { windowsHide: true, timeout: 180000 }, (err, _o, stderr) =>
+      err ? reject(new Error(`Could not unpack the download (${cmd}): ${String(stderr || err.message).trim().split('\n')[0]}`)) : resolve(),
+    );
   });
 }
 

@@ -20,6 +20,8 @@ contextBridge.exposeInMainWorld('castdesk', {
   rotatePin: () => ipcRenderer.invoke('pin:rotate'),
   refreshScan: () => ipcRenderer.invoke('scan:refresh'),
   installAdb: () => ipcRenderer.invoke('usb:installAdb'),
+  projectMode: (mode) => ipcRenderer.invoke('display:project', mode),
+  installDisplayDriver: () => ipcRenderer.invoke('idd:install'),
   revoke: (id) => ipcRenderer.invoke('trusted:revoke', id),
   setPermissions: (id, perms) => ipcRenderer.invoke('trusted:perms', id, perms),
   disconnectClient: (id) => ipcRenderer.invoke('client:disconnect', id),

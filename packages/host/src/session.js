@@ -235,6 +235,9 @@ export class ClientSession {
       case 'arrange':
         if (this.canControl) this.host._arrange(this, m);
         break;
+      case 'project':
+        if (this.canControl) this.host._project(this, m);
+        break;
     }
   }
 }

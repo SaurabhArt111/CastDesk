@@ -16,7 +16,7 @@ test('preload only requires modules that are available in a sandboxed renderer',
 });
 
 test('preload exposes the bridge the UI depends on', () => {
-  for (const name of ['getState', 'onState', 'rotatePin', 'refreshScan', 'installAdb', 'revoke', 'applyLayout', 'getPermissions']) {
+  for (const name of ['getState', 'onState', 'rotatePin', 'refreshScan', 'installAdb', 'projectMode', 'installDisplayDriver', 'revoke', 'applyLayout', 'getPermissions']) {
     assert.match(src, new RegExp(`\\b${name}\\b`), `missing ${name}`);
   }
 });

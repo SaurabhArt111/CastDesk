@@ -15,6 +15,10 @@ When it finishes, `apps\desktop\release` opens with two files:
 | `CastDesk-Setup-1.0.0-x64.exe` | Installer: Start-menu entry, uninstaller, autostart option. Give this to people. |
 | `CastDesk-Portable-1.0.0.exe` | Runs from anywhere, nothing installed. Good for a USB stick. |
 
+## Put it on your website
+
+Copy `CastDesk-Setup-1.0.0-x64.exe` (and your `.apk`, `.dmg`, ...) into **`apps/site/public/downloads/`**, then `npm run build:site`. The site's Download page offers whatever is in that folder, with size and checksum. Details: `apps/site/public/downloads/README.md`.
+
 ## The same thing by hand
 
 In a terminal (PowerShell or cmd) in the project folder:

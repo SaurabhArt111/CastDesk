@@ -7,6 +7,7 @@ export { createProvider } from './displays/providers.js';
 export { InputInjector, createNutBackend } from './input/injector.js';
 export { domCodeToKeyName } from './input/keymap.js';
 export { AdbForwarder, findAdb } from './usb/adb.js';
-export { installPlatformTools, installedAdbPath, platformToolsUrl } from './usb/platform-tools.js';
+export { extractCommand, installPlatformTools, installedAdbPath, platformToolsUrl } from './usb/platform-tools.js';
 export { setAutostart, isAutostart } from './autostart.js';
 export { getLocalAddresses } from './net-info.js';
+export { WindowsVirtualDriver } from './displays/windows-idd.js';

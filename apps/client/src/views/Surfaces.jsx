@@ -132,7 +132,7 @@ export function DirectSurface({ conn, displayId, prefs }) {
 /* ------------------------------------------------------------------ */
 /* TRACKPAD: relative movement + gestures, like a laptop trackpad       */
 /* ------------------------------------------------------------------ */
-export function TrackpadSurface({ conn, prefs }) {
+export function TrackpadSurface({ conn, prefs, compact = false }) {
   const engine = useMemo(
     () =>
       new TrackpadEngine((cmd) => {
@@ -163,7 +163,7 @@ export function TrackpadSurface({ conn, prefs }) {
   });
 
   return (
-    <div className="pad">
+    <div className={`pad ${compact ? 'compact' : ''}`}>
       <div
         className="surface surface-trackpad"
         onPointerDown={(e) => {
@@ -178,8 +178,8 @@ export function TrackpadSurface({ conn, prefs }) {
         <div className="pad-hint">
           <Icon name="trackpad" size={30} />
           <span>Move with one finger · tap to click</span>
-          <span>Two fingers scroll · two-finger tap right-clicks</span>
-          <span>Tap, then drag to drag-and-drop · three fingers swipe</span>
+          {!compact && <span>Two fingers scroll · two-finger tap right-clicks</span>}
+          {!compact && <span>Tap, then drag to drag-and-drop · three fingers swipe</span>}
         </div>
       </div>
       <div className="pad-buttons">

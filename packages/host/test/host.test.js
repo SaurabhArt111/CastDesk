@@ -10,7 +10,7 @@ import {
 } from '@castdesk/shared';
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
-import { installPlatformTools, AdbForwarder } from '../src/index.js';
+import { installPlatformTools, extractCommand, AdbForwarder } from '../src/index.js';
 import { HostService, DisplayManager, InputInjector, setAutostart, isAutostart, domCodeToKeyName } from '../src/index.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'castdesk-test-'));
@@ -410,6 +410,71 @@ test('extend without a driver reports a clear error; host layout validates like 
   assert.equal(main.id !== virt.id, true);
 });
 
+class FakeWinProvider {
+  constructor({ second = false } = {}) {
+    this.caps = { list: true, arrange: true, virtual: false, project: true, note: '' };
+    this.name = 'fake-win';
+    this.hasSecond = second;
+    this.mode = 'internal';
+    this.calls = [];
+  }
+  async list() {
+    const main = { nativeId: 'M1', name: 'Main', x: 0, y: 0, w: 1920, h: 1080, primary: true };
+    const second = { nativeId: 'S1', name: 'Second', x: 1920, y: 0, w: 1280, h: 720 };
+    return this.hasSecond && this.mode === 'extend' ? [main, second] : [main];
+  }
+  async project(mode) { this.mode = mode; this.calls.push(mode); }
+  async arrange() {}
+}
+
+test('Win+P extend: uses an existing second screen, or plugs the virtual driver; reports clear errors', async () => {
+  // 1. a real second monitor exists: Extend hands it to the device and leaves it alone afterwards
+  const real = new FakeWinProvider({ second: true });
+  const dm = new DisplayManager({ provider: real });
+  await dm.refresh();
+  const id = await dm.createVirtual('dev1', {});
+  assert.deepEqual(real.calls, ['extend']);
+  assert.equal(dm.current().find((d) => d.id === id).owner, 'dev1');
+  await dm.removeVirtual('dev1');
+  assert.deepEqual(real.calls, ['extend'], 'a real monitor is not switched off');
+  assert.equal(dm.current().find((d) => d.id === id).owner, null);
+
+  // 2. one screen, no driver: clear, coded error
+  const one = new FakeWinProvider();
+  const dm2 = new DisplayManager({ provider: one });
+  await dm2.refresh();
+  await assert.rejects(dm2.createVirtual('dev2', {}), (e) => e.code === 'no-driver' && /only one screen/.test(e.message));
+
+  // 3. driver installed: plug the virtual monitor, extend, and detach with "PC screen only" when released
+  const virt = new FakeWinProvider();
+  const driver = { installed: () => true, plugged: 0, async plug() { this.plugged++; virt.hasSecond = true; } };
+  const dm3 = new DisplayManager({ provider: virt, driver });
+  await dm3.refresh();
+  const vid = await dm3.createVirtual('dev3', {});
+  assert.equal(driver.plugged, 1);
+  assert.equal(dm3.current().find((d) => d.id === vid).owner, 'dev3');
+  await dm3.removeVirtual('dev3');
+  assert.equal(virt.calls.at(-1), 'internal');
+  assert.equal(dm3.capabilities().driver.installed, true);
+}, { timeout: 60000 });
+
+test('project message: paired device can pick PC screen only / duplicate / extend, never "second screen only"', async (t) => {
+  const provider = new FakeWinProvider({ second: true });
+  const { host, port, done } = await setup(t, { displays: (store) => new DisplayManager({ store, provider }) });
+  const c = new TestClient(port);
+  await c.open();
+  await c.pair(host.pin.current());
+  c.send({ t: 'project', mode: 'external' });
+  const bad = await c.next('project-result');
+  assert.equal(bad.ok, false);
+  c.send({ t: 'project', mode: 'clone' });
+  const ok = await c.next('project-result');
+  assert.equal(ok.ok, true);
+  assert.deepEqual(provider.calls, ['clone']);
+  c.close();
+  await done();
+}, { timeout: 30000 });
+
 test('injector: relative moves accumulate sub-pixels and clamp; wheel notches; pen; release-all', async () => {
   const fb = fakeBackend();
   const inj = new InputInjector({ backend: fb.backend, platform: 'win32' });
@@ -526,4 +591,12 @@ test('adb parseDevices keeps unauthorized and offline phones visible', () => {
   const out = 'List of devices attached\nABC123\tunauthorized usb:1-1 transport_id:1\nXYZ\tdevice usb:1-2 product:p model:Pixel_8 device:d transport_id:2\n\n';
   const list = AdbForwarder.parseDevices(out);
   assert.deepEqual(list.map((d) => [d.serial, d.state, d.model]), [['ABC123', 'unauthorized', 'ABC123'], ['XYZ', 'device', 'Pixel_8']]);
+});
+
+test('unzip command: Windows uses PowerShell (never GNU tar, which breaks on C:\\ paths)', () => {
+  const [cmd, args] = extractCommand('C:\\Users\\A B\\x.zip', 'C:\\Users\\A B\\out', 'win32');
+  assert.equal(cmd, 'powershell');
+  assert.match(args.at(-1), /Expand-Archive -LiteralPath 'C:\\Users\\A B\\x\.zip' -DestinationPath 'C:\\Users\\A B\\out' -Force/);
+  assert.equal(extractCommand('a.zip', 'o', 'linux')[0], 'unzip');
+  assert.equal(extractCommand('a.zip', 'o', 'darwin')[0], '/usr/bin/ditto');
 });

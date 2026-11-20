@@ -21,8 +21,10 @@ export class DisplayManager extends EventEmitter {
    * @param {()=>Promise<object[]>} [o.nativeList]  e.g. Electron `screen` (preferred when given)
    * @param {{create?:string, remove?:string}} [o.virtualCommands]  user-configured driver CLI
    */
-  constructor({ store = null, provider = null, nativeList = null, virtualCommands = null } = {}) {
+  constructor({ store = null, provider = null, nativeList = null, virtualCommands = null, driver = null } = {}) {
     super();
+    this.driver = driver; // optional Windows virtual-display driver (installed(), plug())
+    this.claimed = new Map(); // nativeId -> { plugged }  displays handed out through Win+P instead of created
     this.store = store;
     this.provider = provider || createProvider();
     this.nativeList = nativeList;
@@ -38,8 +40,29 @@ export class DisplayManager extends EventEmitter {
   }
 
   capabilities() {
-    const virtual = this.provider.caps.virtual || Boolean(this.virtualCommands?.create);
-    return { ...this.provider.caps, virtual, provider: this.provider.name };
+    // With Win+P "Extend" a second screen can be used when one exists (or the virtual driver can add one).
+    const virtual = this.provider.caps.virtual || Boolean(this.virtualCommands?.create) || Boolean(this.provider.caps.project);
+    return {
+      ...this.provider.caps,
+      virtual,
+      provider: this.provider.name,
+      driver: this.driver ? { installed: this.driver.installed() } : null,
+    };
+  }
+
+  /** Windows Project panel (Win+P): internal | clone | extend | external. */
+  async project(mode) {
+    if (!this.provider.project) throw new Error('Project modes are only available on Windows');
+    await this.provider.project(mode);
+    for (let i = 0; i < 6; i++) {
+      await sleep(i ? 400 : 700);
+      await this.refresh();
+    }
+    return this.current();
+  }
+
+  #freeSecondary() {
+    return this.items.find((d) => !d.primary && !d.owner);
   }
 
   setVirtualCommands(cmds) {
@@ -102,6 +125,7 @@ export class DisplayManager extends EventEmitter {
       throw new Error(`Extending needs a virtual display driver on this computer. ${caps.note || ''}`.trim());
     }
     await this.removeVirtual(deviceId).catch(() => {});
+    if (!this.provider.caps.virtual && !this.virtualCommands?.create && this.provider.caps.project) return this.#claimViaProject(deviceId);
     const before = new Set(this.items.map((d) => d.nativeId));
     const saved = this.store?.get(deviceId)?.arrangement;
     const b = desktopBounds(this.items);
@@ -128,9 +152,60 @@ export class DisplayManager extends EventEmitter {
     return found.id;
   }
 
+  /**
+   * Windows: use the Project panel's "Extend" and give the device the second screen that appears.
+   * If Windows has only one screen, plug in the virtual driver's monitor first (when installed).
+   */
+  async #claimViaProject(deviceId) {
+    const find = async () => {
+      await this.provider.project('extend');
+      for (let i = 0; i < 8; i++) {
+        await sleep(i ? 500 : 800);
+        await this.refresh();
+        const d = this.#freeSecondary();
+        if (d) return d;
+      }
+      return null;
+    };
+    let plugged = false;
+    let found = await find();
+    if (!found && this.driver?.installed()) {
+      await this.driver.plug();
+      plugged = true;
+      found = await find();
+    }
+    if (!found) {
+      throw Object.assign(
+        new Error(
+          this.driver?.installed()
+            ? 'Windows did not add a second screen. Open Win+P on the computer and choose Extend, then try again.'
+            : 'Windows has only one screen, so there is nothing to extend onto. On the computer open CastDesk → Home → Virtual screen → Install, or plug in a second monitor.',
+        ),
+        { code: this.driver?.installed() ? 'no-display' : 'no-driver' },
+      );
+    }
+    this.owners.set(found.nativeId, deviceId);
+    this.claimed.set(found.nativeId, { plugged });
+    this.store?.update(deviceId, { arrangement: { extend: true, x: found.x, y: found.y } });
+    await this.refresh();
+    return found.id;
+  }
+
   async removeVirtual(deviceId, { remember = false } = {}) {
     const d = this.items.find((i) => i.owner === deviceId);
     if (!d) return;
+    if (this.claimed.has(d.nativeId)) {
+      // Not ours to destroy: just hand it back. A virtual monitor we plugged in is detached with
+      // Win+P "PC screen only" (no administrator prompt needed).
+      const { plugged } = this.claimed.get(d.nativeId);
+      this.claimed.delete(d.nativeId);
+      this.owners.delete(d.nativeId);
+      const rec = this.store?.get(deviceId);
+      if (rec) this.store.update(deviceId, { arrangement: { ...(rec.arrangement || {}), extend: remember, x: d.x, y: d.y } });
+      if (plugged) await this.provider.project('internal').catch(() => {});
+      await this.refresh();
+      return;
+    }
     if (this.provider.caps.virtual) await this.provider.removeVirtual(d.nativeId);
     else if (this.virtualCommands?.remove) await runShell(fill(this.virtualCommands.remove, { name: `CastDesk ${safeName(this.store?.get(deviceId)?.name)}`, id: d.nativeId }));
     this.owners.delete(d.nativeId);

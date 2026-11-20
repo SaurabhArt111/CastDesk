@@ -7,13 +7,27 @@ import KeyboardPanel from './KeyboardPanel.jsx';
 import ArrangementEditor from './ArrangementEditor.jsx';
 import { isElectron, bridge } from '../lib/platform.js';
 import { FrameSink, detectDecoders } from '../lib/decoder.js';
-import { PURPOSES, purposeById } from '../lib/purposes.js';
+import { PURPOSES, PROJECT_MODES, purposeById } from '../lib/purposes.js';
+import { setImmersive } from '../lib/systembars.js';
 
 const QUALITY = [
   { value: 'low', label: 'Fast', maxFps: 30, maxWidth: 1280, quality: 0.5 },
   { value: 'balanced', label: 'Balanced', maxFps: 30, maxWidth: 1920, quality: 0.7 },
   { value: 'high', label: 'Sharp', maxFps: 60, maxWidth: 2560, quality: 0.85 },
 ];
+
+/** Tablets (and bigger) get a trackpad under the keyboard; phones get the keyboard alone. */
+function useTablet() {
+  const q = '(min-width: 600px) and (min-height: 480px)';
+  const [yes, setYes] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => {
+    const m = window.matchMedia(q);
+    const on = () => setYes(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return yes;
+}
 
 function fit(cw, ch, w, h, mode) {
   if (!w || !h || mode === 'stretch') return { w: cw, h: ch };
@@ -92,6 +106,16 @@ export default function Session() {
   const [sheet, setSheet] = useState(null); // 'purpose' | 'quality' | null
   const [arrangeOpen, setArrangeOpen] = useState(false);
   const [fps, setFps] = useState(0);
+  const [extendErr, setExtendErr] = useState(null);
+  const [retry, setRetry] = useState(0);
+  const tablet = useTablet();
+  const isWin = session.host?.platform === 'win32';
+
+  // full screen: no clock or battery bar over the picture while a session is open
+  useEffect(() => {
+    setImmersive(true);
+    return () => setImmersive(false);
+  }, []);
 
   // a purpose that needs control falls back to mirror when the host has not granted it
   const wanted = purposeById(purposeId);
@@ -115,16 +139,24 @@ export default function Session() {
     if (!isExtend) return undefined;
     const w = Math.min(3840, Math.round(screen.width || 1280));
     const h = Math.min(2160, Math.round(screen.height || 720));
+    setExtendErr(null);
     conn.extend(true, { w: Math.max(w, h), h: Math.min(w, h) });
     return () => conn.extend(false);
-  }, [conn, isExtend]);
+  }, [conn, isExtend, retry]);
 
   useEffect(() => {
-    const off1 = conn.on('extend-result', (m) => (m.ok ? toast('Extended display ready', 'ok') : toast(m.error || 'Could not extend', 'error')));
+    const off1 = conn.on('extend-result', (m) => {
+      if (m.ok) {
+        setExtendErr(null);
+        toast('Extended display ready', 'ok');
+      } else setExtendErr({ message: m.error || 'Could not extend', code: m.code || null });
+    });
+    const off3 = conn.on('project-result', (m) => (m.ok ? toast('Display mode changed', 'ok') : toast(m.error || 'Could not change the display mode', 'error')));
     const off2 = conn.on('arrange-result', (m) => !m.ok && toast(m.error || 'Could not move display', 'error'));
     return () => {
       off1();
       off2();
+      off3();
     };
   }, [conn, toast]);
 
@@ -162,7 +194,16 @@ export default function Session() {
 
   let body;
   if (purpose.id === 'trackpad') body = <TrackpadSurface conn={conn} prefs={prefs} />;
-  else if (purpose.id === 'keyboard') body = <KeyboardPanel conn={conn} haptics={prefs.haptics} />;
+  else if (purpose.id === 'keyboard') {
+    body = tablet && canControl ? (
+      <div className="kbd-split">
+        <KeyboardPanel conn={conn} haptics={prefs.haptics} />
+        <TrackpadSurface conn={conn} prefs={prefs} compact />
+      </div>
+    ) : (
+      <KeyboardPanel conn={conn} haptics={prefs.haptics} />
+    );
+  }
   else if (purpose.id === 'pen' && !showVideo) {
     body = (
       <div className="pen-full">
@@ -178,7 +219,7 @@ export default function Session() {
   } else {
     body = (
       <Screen conn={conn} displayId={displayId} prefs={prefs} touch={canControl && prefs.touchControl} onStats={setFps}>
-        {isExtend && !myDisplay && <div className="stage-wait">Creating the extra screen…</div>}
+        {isExtend && !myDisplay && !extendErr && <div className="stage-wait">Creating the extra screen…</div>}
       </Screen>
     );
   }
@@ -186,6 +227,24 @@ export default function Session() {
   return (
     <div className={`session purpose-${purpose.id} ${hud ? '' : 'hud-off'}`}>
       <div className="session-body">{body}</div>
+
+      {isExtend && extendErr && !myDisplay && (
+        <div className="extend-err" role="alert">
+          <h3>Can&apos;t extend yet</h3>
+          <p>{extendErr.message}</p>
+          {extendErr.code === 'no-driver' && (
+            <ol>
+              <li>On the computer open <b>CastDesk → Home → Project</b>.</li>
+              <li>Tap <b>Install virtual screen</b> and allow the administrator prompt (once).</li>
+              <li>Come back here and tap <b>Try again</b>.</li>
+            </ol>
+          )}
+          <div className="extend-err-actions">
+            <button className="btn lime" onClick={() => setRetry((n) => n + 1)}>Try again</button>
+            <button className="btn" onClick={() => choose('mirror')}>Mirror instead</button>
+          </div>
+        </div>
+      )}
 
       <div className={`hud ${hud ? 'open' : ''}`}>
         {hud && (
@@ -206,6 +265,11 @@ export default function Session() {
               <Icon name={purpose.icon} size={16} />
               <span>Switch</span>
             </button>
+            {isWin && canControl && (
+              <button className="hud-btn" onClick={() => setSheet(sheet === 'project' ? null : 'project')} aria-label="Project (Win+P)" title="Project (Win+P)">
+                <Icon name="monitor" size={18} />
+              </button>
+            )}
             {showVideo && (
               <button className="hud-btn" onClick={() => setSheet(sheet === 'quality' ? null : 'quality')} aria-label="Quality" title="Quality">
                 <Icon name="signal" size={18} />
@@ -240,6 +304,17 @@ export default function Session() {
               </button>
             );
           })}
+        </div>
+      )}
+      {sheet === 'project' && (
+        <div className="sheet" role="menu">
+          <p className="sheet-title">Project <kbd className="kbd-chip">Win</kbd><kbd className="kbd-chip">P</kbd></p>
+          {PROJECT_MODES.map((m) => (
+            <button key={m.id} role="menuitem" className="sheet-row" disabled={m.local} onClick={() => { conn.project(m.id); setSheet(null); }}>
+              <span className="sheet-ico tint-mint"><Icon name={m.icon} size={18} /></span>
+              <span className="sheet-text"><strong>{m.title}</strong><small>{m.local ? 'Only on the computer' : m.hint}</small></span>
+            </button>
+          ))}
         </div>
       )}
       {sheet === 'quality' && (

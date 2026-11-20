@@ -71,7 +71,7 @@ export default function Settings() {
               </div>
             </Section>
 
-            <Section title="Virtual display (for “Extend”)" hint={`Extending needs a virtual monitor driver on this computer. ${hostState.caps?.note || ''}`}>
+            <Section title="Virtual display (for “Extend”)" hint={`Advanced: a custom command that adds or removes a virtual monitor (not needed on Windows once you install the virtual screen on the Home page). ${hostState.caps?.note || ''}`}>
               <div className="row stack-row">
                 <span className="row-text"><span className="row-title">Create command</span><span className="row-hint">Placeholders: {'{w} {h} {x} {y} {name}'}. Leave empty if your platform is built in.</span></span>
                 <input className="input wide" defaultValue={hs.virtualCommands?.create || ''} placeholder="e.g. my-vdd-cli add {w}x{h}" onBlur={(e) => host({ virtualCommands: { ...hs.virtualCommands, create: e.target.value.trim() } })} />

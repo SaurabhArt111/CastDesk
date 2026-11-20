@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { useApp } from '../state/AppContext.jsx';
 import Icon, { DeviceIcon } from '../components/Icon.jsx';
 import PurposePicker from '../components/PurposePicker.jsx';
+import { PROJECT_MODES } from '../lib/purposes.js';
 import { Badge, EmptyState, Switch, Modal, PinInput } from '../components/common.jsx';
 import { canHost, bridge, platformLabel, isNative, isElectron } from '../lib/platform.js';
 import { fmtCountdown, timeAgo, copyText } from '../lib/format.js';
@@ -454,6 +455,59 @@ export function PinDialog() {
 }
 
 /* ---------------------------------- Home ---------------------------------- */
+/** Windows' Project panel (Win+P), right inside CastDesk: how screens are shared once a device is paired. */
+function ProjectCard() {
+  const { hostState: hs, toast } = useApp();
+  const idd = hs?.idd;
+  if (!hs?.caps?.project) return null;
+  const set = async (id) => {
+    const r = await bridge.projectMode(id);
+    if (!r?.ok) toast(r?.error || 'Could not change the display mode', 'error');
+  };
+  const install = async () => {
+    const r = await bridge.installDisplayDriver();
+    if (r?.ok) toast('Virtual screen installed', 'ok');
+  };
+  const working = idd?.install?.state === 'working';
+  return (
+    <section className="card">
+      <div className="card-head">
+        <div>
+          <h2>Project <kbd className="kbd-chip">Win</kbd><kbd className="kbd-chip">P</kbd></h2>
+          <p className="muted small">The same switch as Windows. Paired devices can use Duplicate and Extend too.</p>
+        </div>
+      </div>
+      <div className="project-list" role="group" aria-label="Project">
+        {PROJECT_MODES.map((m) => (
+          <button key={m.id} className="project-row" onClick={() => set(m.id)}>
+            <span className="project-ico"><Icon name={m.icon} size={18} /></span>
+            <span className="project-text"><strong>{m.title}</strong><small>{m.hint}</small></span>
+          </button>
+        ))}
+      </div>
+      {idd && (
+        <div className={`notice ${idd.installed ? '' : 'warn'}`}>
+          <Icon name={idd.installed ? 'check' : 'warn'} size={18} />
+          <div>
+            <strong>Virtual screen {idd.installed ? 'installed' : 'not installed'}</strong>
+            <p>{idd.installed
+              ? 'Extend can add a screen for a phone or tablet even when this PC has only one monitor.'
+              : 'With only one monitor Windows has nothing to extend onto. Install a virtual screen once (needs administrator permission and internet for this step), or plug in a second monitor.'}</p>
+            {idd.install?.state === 'error' && <p className="err">{idd.install.error}</p>}
+            {!idd.installed && (
+              <div className="notice-actions">
+                <button className="btn primary small" onClick={install} disabled={working}>
+                  <Icon name="download" size={14} /> {working ? `Installing… ${idd.install.pct || ''}${idd.install.pct ? '%' : ''}` : 'Install virtual screen'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PurposeSection() {
   const { prefs, setPrefs } = useApp();
   return (
@@ -483,6 +537,7 @@ export default function Home() {
           </div>
           <div className="stack">
             <PurposeSection />
+            <ProjectCard />
             <HostDevices />
             <Nearby title="Use another computer" />
             <PairedHosts />

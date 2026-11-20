@@ -178,7 +178,34 @@ check('Trackpad drag moves the real cursor on the host', after[0] > before[0] + 
 // 6. keyboard and pen are their own full-screen purposes too
 await hudSwitch('Keyboard');
 await must(phone, '.session.purpose-keyboard .kbd');
-check('Keyboard purpose: full-screen keyboard only', !(await phone.$('canvas.remote')) && !(await phone.$('.surface-trackpad')));
+check('Keyboard purpose on a phone: keyboard only, no trackpad', !(await phone.$('canvas.remote')) && !(await phone.$('.surface-trackpad')));
+// keys behave like a physical keyboard: down while touched, several at once, up when released
+const cdp = await phone.createCDPSession();
+const keyCenter = (txt) => phone.evaluate((t) => { const b = [...document.querySelectorAll('.kbd-key')].find((x) => x.textContent.trim() === t); const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }, txt);
+const ctrl = await keyCenter('Ctrl');
+const cKey = await keyCenter('C');
+const touch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+await touch('touchStart', [{ x: ctrl.x, y: ctrl.y, id: 1 }]);
+await sleep(150);
+const heldOne = await phone.evaluate(() => [...document.querySelectorAll('.kbd-key.held')].map((b) => b.textContent.trim()));
+await touch('touchStart', [{ x: ctrl.x, y: ctrl.y, id: 1 }, { x: cKey.x, y: cKey.y, id: 2 }]);
+await sleep(150);
+const heldTwo = await phone.evaluate(() => [...document.querySelectorAll('.kbd-key.held')].map((b) => b.textContent.trim()));
+await touch('touchEnd', [{ x: ctrl.x, y: ctrl.y, id: 1 }]);
+await sleep(150);
+const afterC = await phone.evaluate(() => [...document.querySelectorAll('.kbd-key.held')].map((b) => b.textContent.trim()));
+await touch('touchEnd', []);
+await sleep(150);
+const heldNone = await phone.evaluate(() => document.querySelectorAll('.kbd-key.held').length);
+check('Ctrl stays down while held, Ctrl+C works with two fingers, and releases on lift', heldOne.join() === 'Ctrl' && heldTwo.includes('Ctrl') && heldTwo.includes('C') && afterC.join() === 'C' && heldNone === 0, `${heldOne} | ${heldTwo} | ${afterC} | ${heldNone}`);
+// tablet-size screen: keyboard on top, small trackpad below
+const vp = phone.viewport();
+await phone.setViewport({ width: 1024, height: 700, isMobile: true, hasTouch: true });
+await sleep(500);
+check('Keyboard purpose on a tablet: keyboard with a small trackpad under it', !!(await phone.$('.kbd-split .kbd')) && !!(await phone.$('.kbd-split .surface-trackpad')));
+if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'tablet-keyboard.webp'), type: 'webp', quality: 90 });
+await phone.setViewport(vp);
+await sleep(300);
 if (shotsDir) await phone.screenshot({ path: path.join(shotsDir, 'mobile-keyboard.webp'), type: 'webp', quality: 90 });
 await hudSwitch('Pen pad');
 await must(phone, '.session.purpose-pen .surface-pen');

@@ -4,6 +4,7 @@
 
 - **Mirror or extend** a display to another device.
 - **You choose what a device is for**: Mirror, Extend, Trackpad, Keyboard or Pen pad. Each is its own full-screen experience (a trackpad is only a trackpad; it never shares the screen with a video).
+- **Windows Win+P built in**: Duplicate / Extend / PC screen only from CastDesk or from a paired phone. If the PC has one monitor, one click installs a virtual screen so Extend still works.
 - **Smooth over Wi-Fi**: H.264 / VP8 hardware-accelerated video via WebCodecs, with a JPEG fallback for old browsers.
 - **Pair once with a 6-digit PIN**, then devices reconnect automatically with no PIN (Continuity-style).
 - **PC ↔ PC** mirror or extend; every desktop install can host and view.
@@ -41,6 +42,8 @@ npm run dev:site          # run the website on http://localhost:5180
 Headless host (servers, CI): `npm run host:headless`.
 
 Installers and the APK: see [`docs/BUILD.md`](docs/BUILD.md). **Windows .exe in 3 minutes: [`docs/BUILD-EXE.md`](docs/BUILD-EXE.md)** (double-click `scripts/build-exe.bat`).
+
+Host your own downloads: drop the installers in `apps/site/public/downloads/` and the website's Download page serves them.
 
 Source: <https://github.com/SaurabhArt111/Paneo>
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { HostService, DisplayManager, AdbForwarder, setAutostart, installPlatformTools } from '@castdesk/host';
+import { HostService, DisplayManager, AdbForwarder, setAutostart, installPlatformTools, WindowsVirtualDriver } from '@castdesk/host';
 import { DEFAULT_SETTINGS } from '@castdesk/shared';
 import { getPermissions, fixPermission } from './permissions.js';
 
@@ -41,6 +41,8 @@ let quitting = false;
 let pendingCaptureNativeId = null;
 const usbDevices = new Map();
 let usbList = []; // every phone adb can see, including ones still waiting for "Allow USB debugging"
+let iddInstall = { state: 'idle', pct: 0, error: null };
+let iddDriver = null;
 let adbAvailable = false;
 let adbInstall = { state: 'idle', pct: 0, error: null };
 let adbError = null;
@@ -102,7 +104,10 @@ async function startHost() {
       advertise: settings.advertiseOnNetwork && settings.advertise,
       defaultAllowControl: settings.defaultAllowControl,
     },
-    displays: (store) => new DisplayManager({ store, nativeList: async () => nativeDisplays(), virtualCommands: settings.virtualCommands }),
+    displays: (store) => {
+      iddDriver = process.platform === 'win32' ? new WindowsVirtualDriver({ dir: path.join(app.getPath('userData'), 'tools', 'display-driver') }) : null;
+      return new DisplayManager({ store, nativeList: async () => nativeDisplays(), virtualCommands: settings.virtualCommands, driver: iddDriver });
+    },
     approveControl,
     needsApproval: () => settings.requireApprovalForControl,
   });
@@ -157,6 +162,7 @@ function buildState() {
     adb: { available: adbAvailable, error: adbError, install: adbInstall, enabled: settings.usbAutoForward, devices: [...usbDevices.values()], list: usbList.map((d) => ({ ...d, linked: usbDevices.has(d.serial) })) },
     caps: host.displays.capabilities(),
     capture: { ...host.sourceStatus, video: host.sourceCaps.video },
+    idd: iddDriver ? { installed: iddDriver.installed(), install: iddInstall } : null,
   };
 }
 function pushState() {
@@ -331,6 +337,31 @@ function registerIpc() {
     }
     pushState();
     return true;
+  });
+  ipcMain.handle('display:project', async (_e, mode) => {
+    try {
+      await host.displays.project(String(mode));
+      pushState();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+  ipcMain.handle('idd:install', async () => {
+    if (!iddDriver) return { ok: false, error: 'Only needed on Windows' };
+    if (iddInstall.state === 'working') return { ok: false, error: 'Already installing' };
+    iddInstall = { state: 'working', pct: 0, error: null };
+    pushState();
+    try {
+      await iddDriver.install({ onProgress: (pct) => { iddInstall = { ...iddInstall, pct }; pushState(); } });
+      iddInstall = { state: 'idle', pct: 0, error: null };
+      pushState();
+      return { ok: true };
+    } catch (err) {
+      iddInstall = { state: 'error', pct: 0, error: err.message };
+      pushState();
+      return { ok: false, error: err.message };
+    }
   });
   ipcMain.handle('usb:installAdb', async () => {
     if (adbInstall.state === 'downloading') return { ok: false, error: 'Already downloading' };

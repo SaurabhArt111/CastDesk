@@ -50,6 +50,10 @@ Binary WebSocket messages, 10-byte big-endian header followed by the payload:
 
 For `0x02` the payload starts with one codec byte (`1` = H.264 Annex-B, constrained baseline L4.2; `2` = VP8) followed by the encoded chunk. `0x03` payloads are the raw encoded chunk.
 
+## Extend on Windows (Win+P)
+
+Windows has no API to create a monitor, so Extend uses the system's own Project panel (`DisplaySwitch.exe /extend`) and hands the device the second screen that appears. If Windows has only one screen, the optional **virtual screen** (Amyuni's signed `usbmmidd` indirect display driver, installed once with an administrator prompt from CastDesk) plugs in a monitor first. Releasing the screen detaches a virtual monitor with `/internal` (no prompt); a real second monitor is never switched off. Paired devices may choose PC screen only / Duplicate / Extend; "Second screen only" is local-only because it blanks the PC.
+
 ## Purposes
 
 A connection is for exactly one thing at a time, chosen by the user (Home or Preferences, switchable in the session toolbar): **Mirror**, **Extend**, **Trackpad**, **Keyboard** or **Pen pad**. Mirror and Extend show the screen (Extend first asks the host for a virtual display); the others are single full-screen surfaces. The pen pad can optionally show the screen faintly underneath.

@@ -119,6 +119,7 @@ export class HostConnection {
       case MSG.PONG: this.rtt = Math.round(performance.now() - m.ts); this.#emit('rtt', this.rtt); break;
       case MSG.BYE: this.byeReason = m.reason; break;
       case 'extend-result': this.#emit('extend-result', m); break;
+      case 'project-result': this.#emit('project-result', m); break;
       case 'arrange-result': this.#emit('arrange-result', m); break;
     }
   }
@@ -200,6 +201,10 @@ export class HostConnection {
   }
   unsubscribe(display) {
     this.#send({ t: MSG.UNSUBSCRIBE, display });
+  }
+  /** Windows Win+P: internal | clone | extend */
+  project(mode) {
+    this.#send({ t: 'project', mode });
   }
   extend(on, { w = 1280, h = 720 } = {}) {
     this.#send({ t: 'extend', on, w, h });

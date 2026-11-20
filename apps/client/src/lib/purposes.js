@@ -13,3 +13,11 @@ export const PURPOSES = [
 ];
 
 export const purposeById = (id) => PURPOSES.find((p) => p.id === id) || PURPOSES[0];
+
+/** Windows' own Win+P panel, same four choices in the same order. */
+export const PROJECT_MODES = [
+  { id: 'internal', title: 'PC screen only', hint: 'Only this computer’s screen is on', icon: 'monitor', local: false },
+  { id: 'clone', title: 'Duplicate', hint: 'Show the same picture on both', icon: 'mirror', local: false },
+  { id: 'extend', title: 'Extend', hint: 'Use the other screen as extra desktop', icon: 'extend', local: false },
+  { id: 'external', title: 'Second screen only', hint: 'Turns this computer’s own screen off', icon: 'layout', local: true },
+];

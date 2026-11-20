@@ -1,4 +1,4 @@
-import { isNative } from './platform.js';
+import { isNative, isElectron } from './platform.js';
 
 const COLORS = { dark: '#0D2A2D', light: '#E9EFEC' };
 
@@ -17,5 +17,30 @@ export async function applySystemBars(dark) {
     await StatusBar.setBackgroundColor({ color }).catch(() => {});
   } catch (e) {
     console.warn('status bar unavailable', e);
+  }
+}
+
+/**
+ * Immersive mode for live sessions: hides the Android status bar (clock, battery, icons) so the
+ * picture or keyboard gets the whole screen. Swipe from the top edge to peek at it.
+ */
+export async function setImmersive(on) {
+  if (!isElectron && !isNative) {
+    // plain browser / PWA on a phone or tablet
+    if (on) document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
+    else if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }
+  if (!isNative) return;
+  try {
+    const { StatusBar } = await import('@capacitor/status-bar');
+    if (on) {
+      await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+      await StatusBar.hide();
+    } else {
+      await StatusBar.show();
+      await StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+    }
+  } catch (e) {
+    console.warn('immersive mode unavailable', e);
   }
 }

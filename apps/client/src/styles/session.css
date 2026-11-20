@@ -33,16 +33,32 @@
 .pad-buttons button { border-radius: 999px; border: 0; background: var(--s-surface-2); color: var(--s-text); font-weight: 700; touch-action: none; }
 .pad-buttons button:active { background: var(--s-accent); color: #12363a; }
 
-/* ---- on-screen keyboard ---- */
-.kbd { flex: 1; min-height: 0; overflow: auto; padding: 8px 8px calc(10px + var(--safe-bottom)); display: grid; gap: 6px; align-content: start; }
-.kbd-text { background: var(--s-surface); border: 1px solid var(--s-border); color: var(--s-text); border-radius: 18px; padding: 12px 14px; min-height: 46px; font-size: 16px; }
-.kbd-fn { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; }
-.kbd-row { display: flex; gap: 5px; }
-.kbd-key { flex: 1 1 0; min-width: 0; height: 44px; border-radius: 12px; border: 0; background: var(--s-surface-2); color: var(--s-text); font-size: 0.85rem; font-weight: 650; padding: 0 4px; touch-action: manipulation; }
-.kbd-fn .kbd-key { flex: 0 0 auto; padding: 0 14px; height: 36px; background: var(--s-surface); }
-.kbd-key:active { background: var(--s-accent); color: #12363a; }
-.kbd-key.held { background: rgba(199, 242, 59, 0.35); }
-.kbd-key.held.lock { background: var(--s-accent); color: #12363a; }
+/* ---- on-screen keyboard: fills the space it is given, keys are big ---- */
+.kbd { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 8px 8px calc(10px + var(--safe-bottom)); gap: 6px; touch-action: none; }
+.kbd-text { flex: none; background: var(--s-surface); border: 1px solid var(--s-border); color: var(--s-text); border-radius: 18px; padding: 10px 14px; font-size: 16px; touch-action: manipulation; user-select: text; }
+.kbd-fn { flex: 0 0 auto; display: flex; gap: 5px; overflow-x: auto; scrollbar-width: none; }
+.kbd-row { flex: 1 1 0; min-height: 38px; display: flex; gap: 5px; }
+.kbd-key { flex: 1 1 0; min-width: 0; border-radius: 12px; border: 0; background: var(--s-surface-2); color: var(--s-text); font-size: clamp(0.78rem, 1.7vw, 1.05rem); font-weight: 650; padding: 0 4px; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.kbd-fn .kbd-key { flex: 1 0 auto; min-width: 44px; height: 38px; padding: 0 10px; background: var(--s-surface); }
+.kbd-key.mod { background: #25525a; }
+.kbd-key.held { background: var(--s-accent); color: #12363a; transform: translateY(1px); }
+
+/* tablet: keyboard on top, a small trackpad underneath */
+.kbd-split { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.kbd-split .kbd { flex: 1 1 66%; }
+.kbd-split .pad { flex: 0 0 34%; padding: 0 12px calc(12px + var(--safe-bottom)); }
+.kbd-split .pad .pad-buttons { height: 52px; grid-template-columns: 1fr 52px 1fr; }
+.kbd-split .pad .surface-trackpad { border-radius: 22px; }
+.session:not(.hud-off) .kbd-split { margin-top: 0; }
+
+/* "can't extend" explanation */
+.extend-err { position: absolute; z-index: 4; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(440px, calc(100% - 32px)); padding: 22px; border-radius: 28px; background: var(--s-surface); border: 1px solid var(--s-border); display: grid; gap: 10px; }
+.extend-err h3 { margin: 0; }
+.extend-err p { margin: 0; color: var(--s-muted); font-size: 0.92rem; }
+.extend-err ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 0.9rem; }
+.extend-err-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sheet-title { margin: 4px 10px 6px; font-weight: 700; font-size: 0.85rem; color: var(--s-muted); }
+.sheet .kbd-chip { background: var(--s-bg); border-color: var(--s-border); color: var(--s-text); }
 
 /* ---- floating toolbar: never takes layout space ---- */
 .hud { position: absolute; top: calc(10px + var(--safe-top)); left: 10px; right: 10px; display: flex; justify-content: flex-end; gap: 8px; z-index: 5; pointer-events: none; }

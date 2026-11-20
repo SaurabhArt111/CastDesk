@@ -72,3 +72,11 @@
 .usb-steps { margin: 4px 0 0; padding-left: 20px; display: grid; gap: 6px; font-size: 0.88rem; color: var(--muted); }
 .usb-steps b { color: var(--text); }
 .notice .err { color: var(--danger); font-size: 0.85rem; }
+
+.kbd-chip { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); font: 600 0.7rem var(--mono); vertical-align: middle; }
+.project-list { display: grid; gap: 6px; margin-bottom: 12px; }
+.project-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface-2); color: var(--text); text-align: left; }
+.project-row:hover { border-color: var(--primary); }
+.project-ico { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--primary); color: var(--on-primary); }
+.project-text { display: grid; }
+.project-text small { color: var(--muted); font-size: 0.78rem; }

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { exec, execFile } from 'node:child_process';
 
 const sh = (cmd, timeout = 15000) =>
@@ -86,7 +87,7 @@ public class BD {
 const windows = {
   name: 'win32-displaysettings',
   caps: {
-    list: true, arrange: true, virtual: false,
+    list: true, arrange: true, virtual: false, project: true,
     note: 'Repositioning uses ChangeDisplaySettingsEx. A virtual monitor needs an installed Indirect Display Driver; set it up under Preferences > Virtual display.',
   },
   async list() {
@@ -117,6 +118,12 @@ foreach ($it in $items) {
     throw new Error('No virtual display driver configured');
   },
   async removeVirtual() {},
+  /** Windows' own Win+P panel: DisplaySwitch.exe /internal | /clone | /extend | /external */
+  async project(mode) {
+    if (!['internal', 'clone', 'extend', 'external'].includes(mode)) throw new Error('Unknown projection mode');
+    const exe = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'DisplaySwitch.exe');
+    await run(exe, [`/${mode}`], 15000);
+  },
 };
 
 /* --------------------------------- macOS --------------------------------- */
